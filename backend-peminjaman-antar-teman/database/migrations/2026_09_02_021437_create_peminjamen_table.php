@@ -22,6 +22,13 @@ return new class extends Migration
             $table->date('tgl_kembali')->nullable();
 
             $table->enum('status', ['M', 'Ds', 'Dt', 'A', 'S', 'T', 'B'])->default('M');
+            // M  = Menunggu    (pengajuan baru dibuat, nunggu keputusan pemilik)
+            // Ds = Disetujui   (pemilik setuju, barang belum serah terima)
+            // Dt = Ditolak     (pemilik menolak pengajuan)
+            // A  = Aktif       (barang sudah diserahterimakan, sedang dipinjam)
+            // S  = Selesai     (barang sudah dikembalikan tepat/sebelum tenggat)
+            // T  = Terlambat   (lewat tgl_tenggat, barang belum dikembalikan)
+            // B  = Batal       (peminjam membatalkan sebelum disetujui)
 
             $table->timestamps();
         });
