@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-space-blue: #003049;
+  --color-flag-red: #D62828;
+  --color-blazing-orange: #F77F00;
+  --color-honey-gold: #FCBF49;
+  --color-soft-ivory: #EAE2B7;
+  --color-warm-bg: #FDFBF7;
+}
