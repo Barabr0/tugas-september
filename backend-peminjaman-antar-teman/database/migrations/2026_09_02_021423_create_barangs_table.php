@@ -18,8 +18,8 @@ return new class extends Migration
 
         $table->string('nama_barang');
         $table->text('deskripsi');
-        $table->enum('kondisi', ['B', 'R', 'P'])->default('B');
-        $table->enum('status', ['T', 'D', 'M'])->default('T');
+        $table->enum('kondisi', ['B', 'R', 'P'])->default('B');// B = baik R = rusak ringan P = diperbaiki
+        $table->enum('status', ['T', 'D', 'M'])->default('T');// T = tersedia D = dipinjam M = maintenance/ 
 
         $table->timestamps();
     });
