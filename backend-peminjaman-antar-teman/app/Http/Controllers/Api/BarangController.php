@@ -78,7 +78,7 @@ class BarangController extends Controller
             if ($barang->user_id !==$request->user()->id) {
                 return response()->json([
                 'status' => false,
-                'message' => 'Anda tidaat mengubah data ini'
+                'message' => 'Anda tidak dapat mengubah data ini'
                 ], 403);
                 }
                 $validated = $request->validate([
