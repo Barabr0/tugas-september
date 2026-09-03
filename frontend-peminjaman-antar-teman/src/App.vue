@@ -1,11 +1,29 @@
-<script setup></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div id="app-wrapper">
+    <HomeView />
+    <login />
+  </div>
 </template>
 
-<style scoped></style>
+<script>
+import HomeView from './views/Home.vue'
+import Login from './views/Auth/login.vue'
+
+export default {
+  name: 'App', components: { HomeView, Login }
+}
+</script>
+
+<style>
+/* CSS Reset dasar */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: sans-serif;
+  background-color: #FDFBF7;
+}
+</style>
