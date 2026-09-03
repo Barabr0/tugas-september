@@ -1,17 +1,16 @@
 <template>
   <div id="app-wrapper">
     <HomeView />
+    <login />
   </div>
 </template>
 
 <script>
 import HomeView from './views/Home.vue'
+import Login from './views/Auth/login.vue'
 
 export default {
-  name: 'App',
-  components: {
-    HomeView
-  }
+  name: 'App', components: { HomeView, Login }
 }
 </script>
 
