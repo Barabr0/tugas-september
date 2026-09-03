@@ -24,12 +24,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/barang/{id}', [Barang::class, 'update']);     
     Route::delete('/barang/{id}', [Barang::class, 'destroy']);
     // Semua user (peminjam & pemilik)
+    Route::get('/peminjaman', [PeminjamanController::class, 'index']);
     Route::post('/peminjaman', [PeminjamanController::class, 'store']);
-    Route::post('/peminjaman/{peminjaman}/setujui', [PeminjamanController::class, 'setujui']);
 
-    // Khusus admin
-    // Route::middleware('role:admin')->group(function () {
-    //     Route::get('/admin/users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
-    //     Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy']);
-    // });
+    Route::patch('/peminjaman/{id}/setujui', [PeminjamanController::class, 'setujui']);
+    Route::patch('/peminjaman/{id}/tolak', [PeminjamanController::class, 'tolak']);
+    Route::patch('/peminjaman/{id}/batalkan', [PeminjamanController::class, 'batalkan']);
+    Route::patch('/peminjaman/{id}/aktifkan', [PeminjamanController::class, 'aktifkan']);
+
+    // TAMBAH {barangId} di belakang - karena kembalikan sekarang per-barang, bukan per-transaksi
+    Route::patch('/peminjaman/{id}/kembalikan/{barangId}', [PeminjamanController::class, 'kembalikan']);
+    Route::get('/peminjaman/{id}', [PeminjamanController::class, 'show']);
+
 });
