@@ -1,7 +1,7 @@
 <template>
   <div id="app-wrapper">
-    <HomeView />
-    <login />
+    <Router-view />
+    <!-- <RouterLink to="/login">Login</RouterLink> -->
   </div>
 </template>
 
