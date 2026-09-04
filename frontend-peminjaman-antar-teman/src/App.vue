@@ -1,6 +1,11 @@
 <template>
   <div id="app-wrapper">
+<<<<<<< HEAD
     <router-view />
+=======
+    <Router-view />
+    <!-- <RouterLink to="/login">Login</RouterLink> -->
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
   </div>
 </template>
 
