@@ -6,30 +6,55 @@
         <div class="brand-icon">
           <i class="bi bi-shield-lock-fill"></i>
         </div>
-        <h2>Masuk ke PinjamTeman</h2>
+        <h2>Daftar ke PinjamTeman</h2>
         <p>Kelola catatan hutang dan pinjaman barangmu lagi.</p>
       </div>
 
-      <!-- Form Login -->
-      <form @submit.prevent="handleLogin" class="login-form">
+      <!-- Form Register -->
+      <form @submit.prevent="handleRegister" class="login-form">
         <div class="form-group">
-          <label for="email">Email / Nomor HP</label>
+          <label for="name">Nama Lengkap</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-person icon-input"></i>
+            <input 
+              id="name"
+              v-model="name" 
+              type="text" 
+              placeholder="Masukkan nama lengkap" 
+              required
+            />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
           <div class="input-icon-wrapper">
             <i class="bi bi-envelope icon-input"></i>
             <input 
               id="email"
               v-model="email" 
               type="text" 
-              placeholder="Masukkan email atau no. HP" 
+              placeholder="Masukkan email " 
               required
             />
           </div>
         </div>
-
+        <div class="form-group">
+        <label for="no_hp"> Nomor Hp</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-telephone icon-input"></i>
+            <input 
+              id="no_hp"
+              v-model="no_hp" 
+              type="text" 
+              placeholder="Masukkan nomor hp" 
+              required
+            />
+          </div>
+        </div>
         <div class="form-group">
           <div class="label-row">
             <label for="password">Kata Sandi</label>
-            <a href="#" class="forgot-link">Lupa sandi?</a>
+            <a href="#" class="forgot-link">Lupa Sandi?</a>
           </div>
           <div class="input-icon-wrapper">
             <i class="bi bi-key icon-input"></i>
@@ -48,14 +73,16 @@
         </div>
 
         <button type="submit" class="btn-submit">
-          <span>Masuk Sekarang</span>
+          <span>Daftar Sekarang</span>
           <i class="bi bi-arrow-right-short"></i>
         </button>
       </form>
 
       <!-- Footer / Switch to Register -->
       <div class="login-footer">
-        <p>Belum punya akun? <router-link to="/register" class="register-link">Daftar Akun Baru</router-link></p>
+        <div>
+        <router-link to="/login" class="login">Login</router-link>
+        </div>
         <router-link to="/" class="back-home">
           <i class="bi bi-arrow-left"></i> Kembali ke Beranda
         </router-link>
@@ -65,41 +92,52 @@
 </template>
 
 <script>
-import { login } from '../../utils/auth'
+import { register } from '../../utils/auth';
 
 export default {
-  name: 'LoginView',
+  name: 'RegisterView',
   data() {
     return {
+      name: '',
       email: '',
+      no_hp: '',
       password: '',
       showPassword: false,
       errorMessage: '',
+      fieldErrors: {},
       loading: false
-    };
+    }
   },
   methods: {
-    async handleLogin() {
-      this.loading = true;
+    async handleRegister() {
+      console.log('handleRegister terpanggil!');
       this.errorMessage = '';
+      this.fieldErrors = {};
+      this.loading = true;
 
       try {
-        const response = await login({
+        const response = await register({
+          name: this.name,
           email: this.email,
-          password: this.password
+          no_hp: this.no_hp || null,
+          password: this.password,
         });
 
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data));
 
         this.$router.push('/dashboard');
+
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          this.errorMessage = 'Login gagal. Silakan periksa email dan kata sandi Anda.';
-        } else if (error.response) {
-          this.errorMessage = error.response.data.message || 'Login gagal.';
+        if (error.response) {
+          if (error.response.status === 422) {
+            this.fieldErrors = error.response.data.errors || {};
+            this.errorMessage = 'Periksa kembali data yang kamu isi.';
+          } else {
+            this.errorMessage = error.response.data.message || 'Registrasi gagal';
+          }
         } else {
-          this.errorMessage = 'Server tidak dapat dihubungi. Silakan coba lagi nanti.';
+          this.errorMessage = 'Tidak bisa terhubung ke server';
         }
       } finally {
         this.loading = false;
@@ -108,7 +146,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 .login-wrapper {
   min-height: 100vh;
@@ -264,6 +301,20 @@ export default {
   color: #A0AEC0;
   text-decoration: none;
   font-size: 11px;
+}
+
+.login {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  color: #A0AEC0;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.login:hover {
+  color: #003049;
 }
 
 .back-home:hover {
