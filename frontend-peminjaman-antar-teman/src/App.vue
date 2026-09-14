@@ -1,21 +1,18 @@
 <template>
   <div id="app-wrapper">
+    <router-view />
     <Router-view />
     <!-- <RouterLink to="/login">Login</RouterLink> -->
   </div>
 </template>
 
 <script>
-import HomeView from './views/Home.vue'
-import Login from './views/Auth/login.vue'
-
 export default {
-  name: 'App', components: { HomeView, Login }
+  name: 'App'
 }
 </script>
 
 <style>
-/* CSS Reset dasar */
 * {
   box-sizing: border-box;
   margin: 0;

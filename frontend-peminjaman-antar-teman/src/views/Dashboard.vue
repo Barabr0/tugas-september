@@ -19,10 +19,35 @@
       <header class="topbar">
         <input type="text" placeholder="Cari transaksi..." class="search-input" />
         <div class="user-profile">
-          <span class="notification-icon">🔔</span>
-          <img src="https://via.placeholder.com/40" alt="Avatar" class="avatar" />
-          <span>Budi</span>
-        </div>
+  <span class="notification-icon">🔔</span>
+
+  <div class="profile-dropdown" ref="dropdownRef">
+    <div class="profile-trigger" @click="isDropdownOpen = !isDropdownOpen">
+      <img src="https://via.placeholder.com/40" alt="Avatar" class="avatar" />
+      <span>{{ userName }}</span>
+      <i class="bi bi-chevron-down dropdown-caret" :class="{ open: isDropdownOpen }"></i>
+    </div>
+
+    <div v-if="isDropdownOpen" class="dropdown-menu">
+      <div class="dropdown-header">
+        <p class="dropdown-name">{{ userName }}</p>
+        <p class="dropdown-email">{{ userEmail }}</p>
+      </div>
+      <hr class="dropdown-divider" />
+      <a href="#" class="dropdown-item">
+        <i class="bi bi-person"></i> Profil Saya
+      </a>
+      <a href="#" class="dropdown-item">
+        <i class="bi bi-gear"></i> Pengaturan
+      </a>
+      <hr class="dropdown-divider" />
+      <button class="dropdown-item dropdown-logout" @click="handleLogout" :disabled="loggingOut">
+        <i class="bi bi-box-arrow-right"></i>
+        {{ loggingOut ? 'Keluar...' : 'Logout' }}
+      </button>
+    </div>
+  </div>
+</div>
       </header>
 
       <section class="summary-cards">
@@ -87,14 +112,18 @@
 </template>
 
 <script>
+import { logout } from '../utils/auth';
+
 export default {
-  name: 'HomeView',
+  name: 'DashboardView',
   data() {
     return {
       totalPiutang: 1000000000,
       totalHutang: 50000000,
       currentTab: 'Semua',
       tabs: ['Semua', 'Saya Meminjam', 'Orang Lain Meminjam'],
+      loggingOut: false,
+      isDropdownOpen: false,
       transactions: [
         {
           id: 1,
@@ -121,7 +150,31 @@ export default {
     filteredTransactions() {
       if (this.currentTab === 'Semua') return this.transactions;
       return this.transactions.filter(t => t.category === this.currentTab);
+    },
+    userName() {
+      const user = localStorage.getItem('user');
+      if (!user) return 'User';
+      try {
+        return JSON.parse(user).name || 'User';
+      } catch {
+        return 'User';
+      }
+    },
+    userEmail() {
+      const user = localStorage.getItem('user');
+      if (!user) return '';
+      try {
+        return JSON.parse(user).email || '';
+      } catch {
+        return '';
+      }
     }
+  },
+  mounted() {
+    document.addEventListener('click', this.handleClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
     formatRupiah(val) {
@@ -135,6 +188,26 @@ export default {
     },
     completeTransaction(id) {
       this.transactions = this.transactions.filter(t => t.id !== id);
+    },
+    handleClickOutside(event) {
+      const dropdown = this.$refs.dropdownRef;
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.isDropdownOpen = false;
+      }
+    },
+    async handleLogout() {
+      this.loggingOut = true;
+      try {
+        await logout();
+      } catch (error) {
+        console.error('Logout API gagal:', error);
+      } finally {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.loggingOut = false;
+        this.isDropdownOpen = false;
+        this.$router.push('/login');
+      }
     }
   }
 };
@@ -336,5 +409,117 @@ export default {
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
+}
+.btn-logout {
+  background-color: #D62828;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.btn-logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.profile-dropdown {
+  position: relative;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background-color 0.15s;
+}
+
+.profile-trigger:hover {
+  background-color: #F0F4F8;
+}
+
+.dropdown-caret {
+  font-size: 12px;
+  color: #A0AEC0;
+  transition: transform 0.15s;
+}
+
+.dropdown-caret.open {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid #E2E8F0;
+  width: 220px;
+  padding: 8px;
+  z-index: 50;
+}
+
+.dropdown-header {
+  padding: 8px 12px;
+}
+
+.dropdown-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 13px;
+  color: #003049;
+}
+
+.dropdown-email {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: #A0AEC0;
+}
+
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid #EDF2F7;
+  margin: 6px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  color: #2D3748;
+  text-decoration: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #F0F4F8;
+}
+
+.dropdown-logout {
+  color: #D62828;
+}
+
+.dropdown-logout:hover {
+  background-color: #FFEBEE;
+}
+
+.dropdown-logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

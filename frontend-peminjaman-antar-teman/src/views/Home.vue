@@ -206,7 +206,7 @@ export default {
   methods: {
     login() {
       console.log('Tombol diklik!');
-      this.$router.push('/login');
+      this.$router.push('/Login');
     },
     formatRupiah(val) {
       return val.toLocaleString('id-ID');

@@ -65,17 +65,15 @@
 </template>
 
 <script>
-import authService from '../../utils/auth';
+import { login } from '../../utils/auth'
 
 export default {
   name: 'LoginView',
   data() {
     return {
-      form: {
-        email: '',
-        password: '',
-        showPassword: false
-      },
+      email: '',
+      password: '',
+      showPassword: false,
       errorMessage: '',
       loading: false
     };
@@ -90,16 +88,18 @@ export default {
           email: this.email,
           password: this.password
         });
-        // Simpan token ke localStorage
+
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        // Redirect ke dashboard
+        localStorage.setItem('user', JSON.stringify(response.data.data));
+
         this.$router.push('/dashboard');
       } catch (error) {
         if (error.response && error.response.status === 401) {
           this.errorMessage = 'Login gagal. Silakan periksa email dan kata sandi Anda.';
+        } else if (error.response) {
+          this.errorMessage = error.response.data.message || 'Login gagal.';
         } else {
-          this.errorMessage = 'server gagal. Silakan coba lagi nanti.';
+          this.errorMessage = 'Server tidak dapat dihubungi. Silakan coba lagi nanti.';
         }
       } finally {
         this.loading = false;
