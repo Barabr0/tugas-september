@@ -65,7 +65,7 @@
 </template>
 
 <script>
-import authService from '../../services/authService'
+import authService from '../../utils/auth';
 
 export default {
   name: 'LoginView',
