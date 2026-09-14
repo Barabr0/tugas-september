@@ -8,11 +8,13 @@
       </div>
       <nav class="nav-menu">
         <a href="#" class="nav-item active">Dashboard</a>
-        <a href="#" class="nav-item">Pinjaman Saya</a>
-        <a href="#" class="nav-item">Riwayat</a>
-        <a href="#" class="nav-item">Pengaturan</a>
+        <router-link to="/pinjaman_saya" class="nav-item">
+          <a href="#" class="nav-item">Pinjaman Saya</a>
+        </router-link>
       </nav>
-      <button class="btn-primary" @click="openModal">+ Pinjaman Baru</button>
+      <router-link to="/peminjaman" class="nav-item">
+        <button class="btn-primary" @click="openModal">+ Pinjaman Baru</button>
+      </router-link>
     </aside>
 
     <main class="main-content">
@@ -179,9 +181,6 @@ export default {
   methods: {
     formatRupiah(val) {
       return val.toLocaleString('id-ID');
-    },
-    openModal() {
-      alert('Buka modal tambah pinjaman');
     },
     remindWA(name) {
       alert(`Mengirimkan pesan pengingat WhatsApp ke ${name}`);
