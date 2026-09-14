@@ -39,12 +39,21 @@
           </div>
         </div>
         <div class="form-group">
+<<<<<<< HEAD
         <label for="no_hp"> Nomor Hp</label>
           <div class="input-icon-wrapper">
             <i class="bi bi-telephone icon-input"></i>
             <input 
               id="no_hp"
               v-model="no_hp" 
+=======
+        <label for="phone"> Nomor Hp</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-telephone icon-input"></i>
+            <input 
+              id="phone"
+              v-model="phone" 
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
               type="text" 
               placeholder="Masukkan nomor hp" 
               required
@@ -91,7 +100,11 @@
   </div>
 </template>
 
+<<<<<<< HEAD
 <script>
+=======
+<<script>
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
 import { register } from '../../utils/auth';
 
 export default {
@@ -102,6 +115,10 @@ export default {
       email: '',
       no_hp: '',
       password: '',
+<<<<<<< HEAD
+=======
+      password_confirmation: '',
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
       showPassword: false,
       errorMessage: '',
       fieldErrors: {},
@@ -110,7 +127,10 @@ export default {
   },
   methods: {
     async handleRegister() {
+<<<<<<< HEAD
       console.log('handleRegister terpanggil!');
+=======
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
       this.errorMessage = '';
       this.fieldErrors = {};
       this.loading = true;
@@ -123,6 +143,10 @@ export default {
           password: this.password,
         });
 
+<<<<<<< HEAD
+=======
+        // simpan token & data user, langsung login otomatis
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.data));
 
@@ -131,6 +155,10 @@ export default {
       } catch (error) {
         if (error.response) {
           if (error.response.status === 422) {
+<<<<<<< HEAD
+=======
+            // validasi gagal, errors per-field
+>>>>>>> bba2b37347939f7cb8feeb6f6870c1d2cd3c8773
             this.fieldErrors = error.response.data.errors || {};
             this.errorMessage = 'Periksa kembali data yang kamu isi.';
           } else {
