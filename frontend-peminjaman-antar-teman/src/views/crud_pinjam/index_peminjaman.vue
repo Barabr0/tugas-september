@@ -7,7 +7,6 @@
       </div>
 
       <form @submit.prevent="saveTransaction" class="form-body">
-        <!-- Jenis Pinjaman -->
         <div class="form-group">
           <label>Jenis Transaksi</label>
           <div class="radio-group">
@@ -22,7 +21,6 @@
           </div>
         </div>
 
-        <!-- Tipe Transaksi (Uang / Barang) -->
         <div class="form-group">
           <label>Tipe Pinjaman</label>
           <select v-model="form.type" class="input-select">
@@ -31,48 +29,52 @@
           </select>
         </div>
 
-        <!-- Nama Teman -->
         <div class="form-group">
           <label for="name">Nama Teman</label>
-          <input 
-            id="name"
-            v-model="form.name" 
-            type="text" 
-            placeholder="Contoh: Andi, Rian, Siti" 
-            required 
+          <select id="name" v-model="form.temanId" required class="input-control">
+            <option value="" disabled>Pilih teman</option>
+            <option v-for="u in daftarUser" :key="u.id" :value="u.id">{{ u.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group" v-if="form.type === 'uang'">
+          <label for="nominal">Nominal (Rp)</label>
+          <input
+            id="nominal"
+            v-model.number="form.nominal"
+            type="number"
+            min="1"
+            placeholder="Contoh: 50000"
+            required
             class="input-control"
           />
         </div>
-
-        <!-- Deskripsi Pinjaman -->
-        <div class="form-group">
-          <label for="desc">{{ form.type === 'uang' ? 'Nominal (Rp)' : 'Deskripsi Barang' }}</label>
-          <input 
-            id="desc"
-            v-model="form.description" 
-            type="text" 
-            :placeholder="form.type === 'uang' ? 'Contoh: 50.000 (Uang Makan)' : 'Contoh: Kamera DSLR Canon'" 
-            required 
-            class="input-control"
-          />
+        <div class="form-group" v-else>
+          <label for="barang">Pilih Barang</label>
+          <select id="barang" v-model="form.barangId" class="input-control">
+            <option value="" disabled>Pilih barang</option>
+            <option v-for="b in daftarBarang" :key="b.id" :value="b.id">
+              {{ b.nama_barang }}
+            </option>
+          </select>
         </div>
 
-        <!-- Tanggal Jatuh Tempo -->
         <div class="form-group">
           <label for="dueDate">Tanggal Tanggung Jawab / Kembali</label>
-          <input 
+          <input
             id="dueDate"
-            v-model="form.dueDate" 
-            type="date" 
-            required 
+            v-model="form.dueDate"
+            type="date"
+            required
             class="input-control"
           />
         </div>
 
-        <!-- Action Buttons -->
         <div class="form-actions">
           <button type="button" class="btn-cancel" @click="cancel">Batal</button>
-          <button type="submit" class="btn-save">Simpan Transaksi</button>
+          <button type="submit" class="btn-save" :disabled="loading">
+            {{ loading ? 'Menyimpan...' : 'Simpan Transaksi' }}
+          </button>
         </div>
       </form>
     </div>
@@ -80,6 +82,10 @@
 </template>
 
 <script>
+import { getUsers } from '../../utils/user';
+import { ajukanPinjamUang } from '../../utils/peminjamanUang';
+import { ajukanPinjamBarang, getBarangTersedia } from '../../utils/peminjaman';
+
 export default {
   name: 'AddPinjaman',
   data() {
@@ -87,17 +93,80 @@ export default {
       form: {
         category: 'Orang Lain Meminjam',
         type: 'uang',
-        name: '',
-        description: '',
+        temanId: '',
+        nominal: null,
+        barangId: '',
         dueDate: ''
-      }
+      },
+      daftarUser: [],
+      daftarBarang: [],
+      loading: false
     };
   },
+  async mounted() {
+    try {
+      const resUser = await getUsers();
+      this.daftarUser = resUser.data.data;
+
+      const resBarang = await getBarangTersedia();
+      this.daftarBarang = resBarang.data.data;
+    } catch (e) {
+      console.error('Gagal memuat data awal', e);
+    }
+  },
   methods: {
-    saveTransaction() {
-      alert(`Berhasil menyimpan catatan pinjaman untuk ${this.form.name}!`);
-      // Kembali ke halaman utama/dashboard setelah simpan
-      this.$router.push('/');
+    async saveTransaction() {
+      if (!this.form.temanId) {
+        alert('Pilih teman terlebih dahulu.');
+        return;
+      }
+      if (!this.form.dueDate) {
+        alert('Tanggal wajib diisi.');
+        return;
+      }
+
+      this.loading = true;
+      const hariIni = new Date().toISOString().split('T')[0];
+      const arah = this.form.category === 'Orang Lain Meminjam' ? 'piutang' : 'hutang';
+
+      try {
+        if (this.form.type === 'uang') {
+          if (!this.form.nominal || this.form.nominal <= 0) {
+            alert('Nominal wajib diisi.');
+            this.loading = false;
+            return;
+          }
+
+          await ajukanPinjamUang({
+            teman_id: this.form.temanId,
+            arah: arah,
+            nominal: this.form.nominal,
+            tgl_pinjam: hariIni,
+            tgl_tenggat: this.form.dueDate,
+          });
+        } else {
+          if (!this.form.barangId) {
+            alert('Pilih barang terlebih dahulu.');
+            this.loading = false;
+            return;
+          }
+
+          await ajukanPinjamBarang({
+            barang_ids: [this.form.barangId],
+            tgl_pinjam: hariIni,
+            tgl_tenggat: this.form.dueDate,
+          });
+        }
+
+        alert('Berhasil menyimpan catatan pinjaman!');
+        this.$router.push('/dashboard');
+
+      } catch (error) {
+        const pesan = error.response?.data?.message || 'Gagal menyimpan transaksi.';
+        alert(pesan);
+      } finally {
+        this.loading = false;
+      }
     },
     cancel() {
       this.$router.push('/dashboard');
@@ -198,6 +267,16 @@ export default {
   border-color: #003049;
 }
 
+.select-multi {
+  height: 100px;
+}
+
+.hint {
+  font-size: 11px;
+  color: #A0AEC0;
+  margin-top: 4px;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
@@ -213,6 +292,11 @@ export default {
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-cancel {

@@ -3,53 +3,53 @@
     <aside class="sidebar">
       <div class="logo">
         <router-link to="/">
+          <i class="bi bi-inbox-fill"></i>
           <h2>PinjamTeman</h2>
         </router-link>
       </div>
       <nav class="nav-menu">
         <a href="#" class="nav-item active">Dashboard</a>
-        <router-link to="/pinjaman_saya" class="nav-item">
-          <a href="#" class="nav-item">Pinjaman Saya</a>
-        </router-link>
+        <router-link to="/pinjaman_saya" class="nav-item">Pinjaman Saya</router-link>
+        <router-link to="/barang" class="nav-item">Barang</router-link>
+        <router-link to="/kategori" class="nav-item">Kategori</router-link>
       </nav>
-      <router-link to="/peminjaman" class="nav-item">
-        <button class="btn-primary" @click="openModal">+ Pinjaman Baru</button>
-      </router-link>
+      
+      
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <input type="text" placeholder="Cari transaksi..." class="search-input" />
         <div class="user-profile">
-  <span class="notification-icon">🔔</span>
+          <span class="notification-icon">🔔</span>
 
-  <div class="profile-dropdown" ref="dropdownRef">
-    <div class="profile-trigger" @click="isDropdownOpen = !isDropdownOpen">
-      <img src="https://via.placeholder.com/40" alt="Avatar" class="avatar" />
-      <span>{{ userName }}</span>
-      <i class="bi bi-chevron-down dropdown-caret" :class="{ open: isDropdownOpen }"></i>
-    </div>
+          <div class="profile-dropdown" ref="dropdownRef">
+            <div class="profile-trigger" @click="isDropdownOpen = !isDropdownOpen">
+              <img src="https://via.placeholder.com/40" alt="Avatar" class="avatar" />
+              <span>{{ userName }}</span>
+              <i class="bi bi-chevron-down dropdown-caret" :class="{ open: isDropdownOpen }"></i>
+            </div>
 
-    <div v-if="isDropdownOpen" class="dropdown-menu">
-      <div class="dropdown-header">
-        <p class="dropdown-name">{{ userName }}</p>
-        <p class="dropdown-email">{{ userEmail }}</p>
-      </div>
-      <hr class="dropdown-divider" />
-      <a href="#" class="dropdown-item">
-        <i class="bi bi-person"></i> Profil Saya
-      </a>
-      <a href="#" class="dropdown-item">
-        <i class="bi bi-gear"></i> Pengaturan
-      </a>
-      <hr class="dropdown-divider" />
-      <button class="dropdown-item dropdown-logout" @click="handleLogout" :disabled="loggingOut">
-        <i class="bi bi-box-arrow-right"></i>
-        {{ loggingOut ? 'Keluar...' : 'Logout' }}
-      </button>
-    </div>
-  </div>
-</div>
+            <div v-if="isDropdownOpen" class="dropdown-menu">
+              <div class="dropdown-header">
+                <p class="dropdown-name">{{ userName }}</p>
+                <p class="dropdown-email">{{ userEmail }}</p>
+              </div>
+              <hr class="dropdown-divider" />
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-person"></i> Profil Saya
+              </a>
+              <a href="#" class="dropdown-item">
+                <i class="bi bi-gear"></i> Pengaturan
+              </a>
+              <hr class="dropdown-divider" />
+              <button class="dropdown-item dropdown-logout" @click="handleLogout" :disabled="loggingOut">
+                <i class="bi bi-box-arrow-right"></i>
+                {{ loggingOut ? 'Keluar...' : 'Logout' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </header>
 
       <section class="summary-cards">
@@ -77,7 +77,7 @@
       <section class="transaction-list">
         <div 
           v-for="item in filteredTransactions" 
-          :key="item.id" 
+          :key="item.key" 
           class="transaction-card"
         >
           <div class="item-info">
@@ -89,25 +89,15 @@
             </div>
           </div>
           <div class="item-actions">
-            <span :class="['status-badge', item.status.toLowerCase().replace(' ', '-')]">
-              {{ item.status }}
+            <span :class="['status-badge', statusClass(item.status)]">
+              {{ labelStatus(item.status) }}
             </span>
-            <button 
-              v-if="item.status === 'Jatuh Tempo'" 
-              class="btn-wa" 
-              @click="remindWA(item.name)"
-            >
-              Kirim Tagihan WA
-            </button>
-            <button 
-              v-else 
-              class="btn-secondary" 
-              @click="completeTransaction(item.id)"
-            >
-              Tandai Selesai
-            </button>
           </div>
         </div>
+
+        <p v-if="filteredTransactions.length === 0" class="empty-msg">
+          Belum ada transaksi.
+        </p>
       </section>
     </main>
   </div>
@@ -115,37 +105,21 @@
 
 <script>
 import { logout } from '../utils/auth';
+import { getPeminjaman } from '../utils/peminjaman';
+import { getPeminjamanUang } from '../utils/peminjamanUang';
 
 export default {
   name: 'DashboardView',
   data() {
     return {
-      totalPiutang: 1000000000,
-      totalHutang: 50000000,
+      totalPiutang: 0,
+      totalHutang: 0,
       currentTab: 'Semua',
       tabs: ['Semua', 'Saya Meminjam', 'Orang Lain Meminjam'],
       loggingOut: false,
       isDropdownOpen: false,
-      transactions: [
-        {
-          id: 1,
-          name: 'Rian',
-          description: 'Kamera DSLR',
-          dueDate: '15 Mar 2026',
-          status: 'Aktif',
-          type: 'barang',
-          category: 'Orang Lain Meminjam'
-        },
-        {
-          id: 2,
-          name: 'Siti',
-          description: 'Rp 50.000 (Makan Siang)',
-          dueDate: 'Hari Ini',
-          status: 'Jatuh Tempo',
-          type: 'uang',
-          category: 'Orang Lain Meminjam'
-        }
-      ]
+      currentUserId: null,
+      transactions: []
     };
   },
   computed: {
@@ -172,21 +146,86 @@ export default {
       }
     }
   },
-  mounted() {
+  async mounted() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    this.currentUserId = user.id;
+
     document.addEventListener('click', this.handleClickOutside);
+    await this.muatData();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
+    async muatData() {
+      try {
+        const [resBarang, resUang] = await Promise.all([
+          getPeminjaman(),
+          getPeminjamanUang()
+        ]);
+
+        const barangList = resBarang.data.data.map(item => this.mapBarang(item));
+        const uangList = resUang.data.data.map(item => this.mapUang(item));
+
+        this.transactions = [...uangList, ...barangList].sort((a, b) => b.id - a.id);
+
+        this.totalPiutang = uangList
+          .filter(t => t.category === 'Orang Lain Meminjam' && ['Ds', 'A'].includes(t.rawStatus))
+          .reduce((sum, t) => sum + t.nominal, 0);
+
+        this.totalHutang = uangList
+          .filter(t => t.category === 'Saya Meminjam' && ['Ds', 'A'].includes(t.rawStatus))
+          .reduce((sum, t) => sum + t.nominal, 0);
+
+      } catch (e) {
+        console.error('Gagal memuat data dashboard', e);
+      }
+    },
+    mapBarang(item) {
+      const sayaPeminjam = item.peminjam_id === this.currentUserId;
+      const namaBarang = item.barangs?.map(b => b.nama_barang).join(', ') || '-';
+
+      return {
+        key: 'barang-' + item.id,
+        id: item.id,
+        name: sayaPeminjam ? item.pemilik.name : item.peminjam.name,
+        description: namaBarang,
+        dueDate: this.formatTanggal(item.tgl_tenggat),
+        status: item.status,
+        rawStatus: item.status,
+        type: 'barang',
+        category: sayaPeminjam ? 'Saya Meminjam' : 'Orang Lain Meminjam'
+      };
+    },
+    mapUang(item) {
+      const sayaPeminjam = item.peminjam_id === this.currentUserId;
+
+      return {
+        key: 'uang-' + item.id,
+        id: item.id,
+        name: sayaPeminjam ? item.pemberi.name : item.peminjam.name,
+        description: 'Rp ' + Number(item.nominal).toLocaleString('id-ID'),
+        dueDate: this.formatTanggal(item.tgl_tenggat),
+        status: item.status,
+        rawStatus: item.status,
+        nominal: Number(item.nominal),
+        type: 'uang',
+        category: sayaPeminjam ? 'Saya Meminjam' : 'Orang Lain Meminjam'
+      };
+    },
+    formatTanggal(tgl) {
+      return new Date(tgl).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    },
+    labelStatus(status) {
+      const map = { M: 'Menunggu', Ds: 'Disetujui', Dt: 'Ditolak', A: 'Aktif', S: 'Selesai', B: 'Batal' };
+      return map[status] || status;
+    },
+    statusClass(status) {
+      const map = { M: 'menunggu', Ds: 'disetujui', Dt: 'ditolak', A: 'aktif', S: 'selesai', B: 'batal' };
+      return map[status] || '';
+    },
     formatRupiah(val) {
       return val.toLocaleString('id-ID');
-    },
-    remindWA(name) {
-      alert(`Mengirimkan pesan pengingat WhatsApp ke ${name}`);
-    },
-    completeTransaction(id) {
-      this.transactions = this.transactions.filter(t => t.id !== id);
     },
     handleClickOutside(event) {
       const dropdown = this.$refs.dropdownRef;
@@ -213,7 +252,6 @@ export default {
 </script>
 
 <style scoped>
-/* Color Palette */
 :root {
   --deep-blue: #003049;
   --blazing-orange: #F77F00;
@@ -228,7 +266,6 @@ export default {
   font-family: sans-serif;
 }
 
-/* Sidebar */
 .sidebar {
   width: 240px;
   background-color: #003049;
@@ -262,7 +299,6 @@ export default {
   color: white;
 }
 
-/* Main Content */
 .main-content {
   flex: 1;
   padding: 32px;
@@ -293,7 +329,6 @@ export default {
   border-radius: 50%;
 }
 
-/* Cards */
 .summary-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -313,7 +348,6 @@ export default {
 .card-title { margin: 0 0 8px 0; opacity: 0.9; }
 .card-value { margin: 0; font-size: 24px; }
 
-/* Tabs */
 .tabs {
   display: flex;
   gap: 12px;
@@ -335,7 +369,6 @@ export default {
   border-bottom: 3px solid #003049;
 }
 
-/* Transactions */
 .transaction-list {
   display: flex;
   flex-direction: column;
@@ -378,10 +411,13 @@ export default {
   font-weight: bold;
 }
 
-.status-badge.aktif { background: #e3f2fd; color: #1976d2; }
-.status-badge.jatuh-tempo { background: #ffebee; color: #D62828; }
+.status-badge.menunggu { background: #FFF3E0; color: #F77F00; }
+.status-badge.disetujui { background: #e3f2fd; color: #1976d2; }
+.status-badge.ditolak { background: #ffebee; color: #D62828; }
+.status-badge.aktif { background: #E8F5E9; color: #2E7D32; }
+.status-badge.selesai { background: #F0F4F8; color: #4A5568; }
+.status-badge.batal { background: #F0F0F0; color: #999; }
 
-/* Buttons */
 .btn-primary {
   background-color: #F77F00;
   color: white;
@@ -390,25 +426,15 @@ export default {
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
+  width: 100%;
 }
 
-.btn-secondary {
-  background-color: #003049;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
+.empty-msg {
+  text-align: center;
+  color: #A0AEC0;
+  padding: 24px;
 }
 
-.btn-wa {
-  background-color: white;
-  border: 1px solid #003049;
-  color: #003049;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-}
 .btn-logout {
   background-color: #D62828;
   color: white;
@@ -425,6 +451,7 @@ export default {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .profile-dropdown {
   position: relative;
 }

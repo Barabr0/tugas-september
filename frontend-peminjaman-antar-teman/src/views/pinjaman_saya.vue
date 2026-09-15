@@ -1,7 +1,6 @@
 <template>
   <div class="pinjam-page">
     <div class="main-card">
-      <!-- Top Bar / Header Card -->
       <div class="card-top">
         <div class="header-left">
           <router-link to="/dashboard" class="btn-back" title="Kembali ke Beranda">
@@ -17,7 +16,6 @@
         </router-link>
       </div>
 
-      <!-- Table Section -->
       <div class="table-wrapper">
         <table class="custom-table">
           <thead>
@@ -28,12 +26,12 @@
               <th style="width: 120px;">Kategori</th>
               <th style="width: 140px;">Jatuh Tempo</th>
               <th style="width: 130px;">Status</th>
-              <th style="width: 130px;" class="text-center">Aksi</th>
+              <th style="width: 180px;" class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in pinjamanList" :key="item.id">
-              <td class="id-col">#{{ item.id }}</td>
+            <tr v-for="(item, index) in pinjamanList" :key="item.key">
+              <td class="id-col">#{{ index + 1 }}</td>
               <td class="name-col">{{ item.nama_teman }}</td>
               <td class="detail-col">
                 <span class="type-badge">{{ item.tipe === 'barang' ? '📷' : '💵' }}</span>
@@ -46,39 +44,54 @@
               </td>
               <td class="date-col">{{ item.jatuh_tempo }}</td>
               <td>
-                <span :class="['tag-status', item.status.toLowerCase().replace(' ', '-')]">
-                  {{ item.status }}
+                <span :class="['tag-status', statusClass(item.status)]">
+                  {{ labelStatus(item.status) }}
                 </span>
               </td>
               <td class="action-col">
-                <button 
-                  v-if="item.status === 'Jatuh Tempo'" 
-                  class="btn-icon wa" 
-                  title="Tagih via WhatsApp"
-                  @click="remindWA(item.nama_teman)"
+                <button
+                  v-if="item.status === 'M' && item.isPenerimaAksi"
+                  class="btn-icon setuju"
+                  title="Setujui"
+                  @click="aksi(item, 'setujui')"
                 >
-                  <i class="bi bi-whatsapp"></i>
+                  <i class="bi bi-check-lg"></i>
                 </button>
-
-                <button 
-                  class="btn-icon edit" 
-                  title="Edit Data"
-                  @click="editPinjaman(item.id)"
+                <button
+                  v-if="item.status === 'M' && item.isPenerimaAksi"
+                  class="btn-icon delete"
+                  title="Tolak"
+                  @click="aksi(item, 'tolak')"
                 >
-                  <i class="bi bi-pencil-fill"></i>
+                  <i class="bi bi-x-lg"></i>
                 </button>
-
-                <button 
-                  class="btn-icon delete" 
-                  title="Hapus Data"
-                  @click="confirmDelete(item.id)"
+                <button
+                  v-if="item.status === 'M' && item.isPengaju"
+                  class="btn-icon delete"
+                  title="Batalkan"
+                  @click="aksi(item, 'batalkan')"
                 >
                   <i class="bi bi-trash-fill"></i>
+                </button>
+                <button
+                  v-if="item.status === 'Ds' && item.isPenerimaAksi"
+                  class="btn-icon edit"
+                  title="Serahkan / Aktifkan"
+                  @click="aksi(item, 'aktifkan')"
+                >
+                  <i class="bi bi-box-arrow-in-right"></i>
+                </button>
+                <button
+                  v-if="item.status === 'A' && item.tipe === 'uang'"
+                  class="btn-icon wa"
+                  title="Tandai Lunas"
+                  @click="aksi(item, 'lunas')"
+                >
+                  <i class="bi bi-check-circle"></i>
                 </button>
               </td>
             </tr>
 
-            <!-- Empty State -->
             <tr v-if="pinjamanList.length === 0">
               <td colspan="7" class="empty-state">
                 <i class="bi bi-inbox"></i>
@@ -93,51 +106,101 @@
 </template>
 
 <script>
+import { getPeminjaman, setujuiPeminjaman, tolakPeminjaman, batalkanPeminjaman, aktifkanPeminjaman } from '../utils/peminjaman';
+import { getPeminjamanUang, setujuiPeminjamanUang, tolakPeminjamanUang, batalkanPeminjamanUang, aktifkanPeminjamanUang, lunasPeminjamanUang } from '../utils/peminjamanUang';
+
 export default {
   name: 'PinjamanView',
   data() {
     return {
-      pinjamanList: [
-        { 
-          id: 1, 
-          nama_teman: 'Rian', 
-          detail: 'Kamera DSLR Canon EOS', 
-          tipe: 'barang', 
-          kategori: 'Piutang', 
-          jatuh_tempo: '15 Mar 2026', 
-          status: 'Aktif' 
-        },
-        { 
-          id: 2, 
-          nama_teman: 'Siti', 
-          detail: 'Rp 50.000 (Makan Siang)', 
-          tipe: 'uang', 
-          kategori: 'Piutang', 
-          jatuh_tempo: 'Hari Ini', 
-          status: 'Jatuh Tempo' 
-        },
-        { 
-          id: 3, 
-          nama_teman: 'Andi', 
-          detail: 'Rp 200.000 (Tiket Konser)', 
-          tipe: 'uang', 
-          kategori: 'Hutang', 
-          jatuh_tempo: '20 Mar 2026', 
-          status: 'Aktif' 
-        }
-      ]
+      pinjamanList: [],
+      currentUserId: null
     };
   },
+  async mounted() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    this.currentUserId = user.id;
+    await this.muatData();
+  },
   methods: {
-    remindWA(name) {
-      alert(`Mengirimkan pengingat WhatsApp ke ${name}`);
+    async muatData() {
+      try {
+        const [resBarang, resUang] = await Promise.all([
+          getPeminjaman(),
+          getPeminjamanUang()
+        ]);
+
+        const barangList = resBarang.data.data.map(item => this.mapBarang(item));
+        const uangList = resUang.data.data.map(item => this.mapUang(item));
+
+        this.pinjamanList = [...uangList, ...barangList].sort((a, b) => b.id - a.id);
+      } catch (e) {
+        console.error('Gagal memuat data pinjaman', e);
+      }
     },
-    editPinjaman(id) {
-      this.$router.push(`/pinjaman/${id}/edit`);
+    mapBarang(item) {
+      const namaBarang = item.barangs?.map(b => b.nama_barang).join(', ') || '-';
+      const sayaPeminjam = item.peminjam_id === this.currentUserId;
+
+      return {
+        key: 'barang-' + item.id,
+        id: item.id,
+        tipe: 'barang',
+        detail: namaBarang,
+        nama_teman: sayaPeminjam ? item.pemilik.name : item.peminjam.name,
+        kategori: sayaPeminjam ? 'Hutang' : 'Piutang',
+        jatuh_tempo: this.formatTanggal(item.tgl_tenggat),
+        status: item.status,
+        isPengaju: item.peminjam_id === this.currentUserId,
+        isPenerimaAksi: item.pemilik_id === this.currentUserId,
+        raw: item
+      };
     },
-    confirmDelete(id) {
-      if (confirm('Yakin ingin menghapus catatan ini?')) {
-        this.pinjamanList = this.pinjamanList.filter(item => item.id !== id);
+    mapUang(item) {
+      const sayaPeminjam = item.peminjam_id === this.currentUserId;
+
+      return {
+        key: 'uang-' + item.id,
+        id: item.id,
+        tipe: 'uang',
+        detail: 'Rp ' + Number(item.nominal).toLocaleString('id-ID'),
+        nama_teman: sayaPeminjam ? item.pemberi.name : item.peminjam.name,
+        kategori: sayaPeminjam ? 'Hutang' : 'Piutang',
+        jatuh_tempo: this.formatTanggal(item.tgl_tenggat),
+        status: item.status,
+        isPengaju: item.peminjam_id === this.currentUserId,
+        isPenerimaAksi: item.pemberi_id === this.currentUserId,
+        raw: item
+      };
+    },
+    formatTanggal(tgl) {
+      return new Date(tgl).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    },
+    labelStatus(status) {
+      const map = { M: 'Menunggu', Ds: 'Disetujui', Dt: 'Ditolak', A: 'Aktif', S: 'Selesai', B: 'Batal' };
+      return map[status] || status;
+    },
+    statusClass(status) {
+      const map = { M: 'menunggu', Ds: 'disetujui', Dt: 'ditolak', A: 'aktif', S: 'selesai', B: 'batal' };
+      return map[status] || '';
+    },
+    async aksi(item, jenis) {
+      try {
+        if (item.tipe === 'barang') {
+          if (jenis === 'setujui') await setujuiPeminjaman(item.id);
+          if (jenis === 'tolak') await tolakPeminjaman(item.id);
+          if (jenis === 'batalkan') await batalkanPeminjaman(item.id);
+          if (jenis === 'aktifkan') await aktifkanPeminjaman(item.id);
+        } else {
+          if (jenis === 'setujui') await setujuiPeminjamanUang(item.id);
+          if (jenis === 'tolak') await tolakPeminjamanUang(item.id);
+          if (jenis === 'batalkan') await batalkanPeminjamanUang(item.id);
+          if (jenis === 'aktifkan') await aktifkanPeminjamanUang(item.id);
+          if (jenis === 'lunas') await lunasPeminjamanUang(item.id);
+        }
+        await this.muatData();
+      } catch (e) {
+        alert(e.response?.data?.message || 'Aksi gagal dilakukan');
       }
     }
   }
@@ -145,7 +208,6 @@ export default {
 </script>
 
 <style scoped>
-/* Page Layout */
 .pinjam-page {
   background-color: #FDFBF7;
   min-height: 100vh;
@@ -164,7 +226,6 @@ export default {
   border: 1px solid #E2E8F0;
 }
 
-/* Card Top Bar */
 .card-top {
   display: flex;
   justify-content: space-between;
@@ -233,7 +294,6 @@ export default {
   background-color: #E07300;
 }
 
-/* Table Styling */
 .table-wrapper {
   overflow-x: auto;
 }
@@ -286,7 +346,6 @@ export default {
   font-size: 14px;
 }
 
-/* Tags & Badges */
 .tag-kategori {
   padding: 4px 10px;
   border-radius: 6px;
@@ -317,17 +376,13 @@ export default {
   display: inline-block;
 }
 
-.tag-status.aktif {
-  background-color: #E3F2FD;
-  color: #1565C0;
-}
+.tag-status.menunggu { background-color: #FFF3E0; color: #F77F00; }
+.tag-status.disetujui { background-color: #E3F2FD; color: #1565C0; }
+.tag-status.ditolak { background-color: #FFEBEE; color: #D62828; }
+.tag-status.aktif { background-color: #E8F5E9; color: #2E7D32; }
+.tag-status.selesai { background-color: #F0F4F8; color: #4A5568; }
+.tag-status.batal { background-color: #F0F0F0; color: #999; }
 
-.tag-status.jatuh-tempo {
-  background-color: #FFEBEE;
-  color: #D62828;
-}
-
-/* Action Buttons */
 .action-col {
   display: flex;
   justify-content: center;
@@ -351,24 +406,12 @@ export default {
   transform: translateY(-1px);
 }
 
-.btn-icon.wa {
-  background-color: #E8F5E9;
-  color: #2E7D32;
-}
+.btn-icon.wa { background-color: #E8F5E9; color: #2E7D32; }
+.btn-icon.setuju { background-color: #E8F5E9; color: #2E7D32; }
+.btn-icon.edit { background-color: #FFF8E1; color: #F57F17; }
+.btn-icon.delete { background-color: #FFEBEE; color: #C62828; }
 
-.btn-icon.edit {
-  background-color: #FFF8E1;
-  color: #F57F17;
-}
-
-.btn-icon.delete {
-  background-color: #FFEBEE;
-  color: #C62828;
-}
-
-.text-center {
-  text-align: center;
-}
+.text-center { text-align: center; }
 
 .empty-state {
   text-align: center;
