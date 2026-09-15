@@ -10,26 +10,30 @@ use Exception;
 
 class BarangController extends Controller
 {
-    public function index()
-    {
-        try {
-            $barang = Barang::with(['pemilik', 'kategori'])
-                ->where('status', 'T')
-                ->latest()
-                ->get();
+public function index(Request $request)
+{
+    try {
+        $query = Barang::with(['pemilik', 'kategori'])->latest();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Data berhasil diambil',
-                'data' => $barang
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+        // JIKA YANG LOGIN BUKAN ADMIN, HANYA TAMPILKAN BARANG MILIKNYA SENDIRI
+        if ($request->user()->role !== 'admin') {
+            $query->where('user_id', $request->user()->id);
         }
+
+        $barang = $query->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data berhasil diambil',
+            'data' => $barang
+        ], 200);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function store(Request $request)
     {
@@ -66,48 +70,55 @@ class BarangController extends Controller
             ], 500);
         }
     }
-    public function Update(Request $request,string $id) {
-        $barang = Barang::find($id);
-        try {
-            if (! $barang) {
-                return response()->json([
+   public function update(Request $request, string $id)
+{
+    $barang = Barang::find($id);
+
+    try {
+        if (!$barang) {
+            return response()->json([
                 'status' => false,
                 'message' => 'data barang tidak ada'
             ], 404);
-            }
-            if ($barang->user_id !==$request->user()->id) {
-                return response()->json([
+        }
+
+        if ($barang->user_id !== $request->user()->id) {
+            return response()->json([
                 'status' => false,
                 'message' => 'Anda tidak dapat mengubah data ini'
-                ], 403);
-                }
-                $validated = $request->validate([
-                    'kategori_id' => 'sometimes|required|exists:kategoris,id',
-                    'nama_barang' => 'sometimes|required|string|max:225',
-                    'deskripsi' => 'sometimes|required|string',
-                    'kondisi' => 'nullable|in:B,R,P',
-                ]);
-                $barang->Update($validated);
-                $barang->load(['pemilik','kategori']);
-
-                return response()->json([
-                'status' => true,
-                'message' => 'Data berhasil diedit',
-                'data' => $barang
-            ], 200);
-             } catch (ValidationException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Validasi gagal.',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            ], 403);
         }
+
+        $validated = $request->validate([
+            'kategori_id' => 'sometimes|required|exists:kategoris,id',
+            'nama_barang' => 'sometimes|required|string|max:225',
+            'deskripsi' => 'sometimes|required|string',
+            'kondisi' => 'nullable|in:B,R,P',
+        ]);
+
+        $barang->update($validated);
+        $barang->load(['pemilik', 'kategori']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data berhasil diedit',
+            'data' => $barang
+        ], 200);
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validasi gagal.',
+            'errors' => $e->errors()
+        ], 422);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
             public function destroy(Request $request, string $id)
         {
             try {
