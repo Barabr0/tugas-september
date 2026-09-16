@@ -7,7 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class PeminjamanUang extends Model
 {
     protected $table = 'peminjaman_uangs';
-    protected $guarded = ['id'];
+    
+    protected $fillable = [
+        'pemberi_id',
+        'peminjam_id',
+        'nominal',
+        'tgl_pinjam',
+        'tgl_tenggat',
+        'tgl_lunas',
+        'status'
+    ];
 
     public function pemberi()
     {

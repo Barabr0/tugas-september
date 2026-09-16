@@ -5,100 +5,120 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Kategori;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Exception;
-use Illuminate\Support\Str;
 
 class KategoriController extends Controller
 {
-    public function index() {
-        try {
-            $kategori = Kategori::latest()->get();
-            return response()->json([
-                'status'=> true,
-                'message' => 'Data berhasil diambil',
-                'data' => $kategori,
-            ],200);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'status'=> false,
-                'message' => 'Data tidak dapat diambil',
-            ],500);
-        }
-    }
-    public function store(Request $request){
-        try {
-            $request->validate([
-            'nama_kategori' => 'required|unique:kategoris,nama_kategori'
-            ]);
-
-            $kategori = new Kategori();
-            $kategori->nama_kategori = $request['nama_kategori'];
-            $kategori->slug          = Str::slug($request['nama_kategori']) . Str::random(10);
-            $kategori->save();
-
-             return response()->json([
-                'status' => true,
-                'message' => "data berhasi dibuat",
-                'data' => $kategori,
-            ], 201);
-        } catch (Exception $e) {
-            return response()->json([
-                'status'=> false,
-                'message' => 'Data tidak dapat dibuat',
-            ],500);
-        }
-    }
-      public function update(Request $request, string $id)
+    public function index()
     {
-        $kategori = Kategori::find($id);
         try {
-            if (! $kategori) {
-                return response()->json([
-                'status' => false,
-            'message' => "data kategori tidak ada",
-        ],404);
-            }
-             $request->validate([
-                'nama_kategori' => 'required|unique:kategoris,nama_kategori,'. $id,   
-            ]);
-            
-            $kategori->nama_kategori = $request->nama_kategori;
-            $kategori->slug        = Str::slug($request->nama_kategori) . Str::random(10);
-            $kategori->save();
+            $kategoris = Kategori::latest()->get();
 
             return response()->json([
                 'status' => true,
-                'message' => "data berhasi dibuat",
-                'data' => $kategori,
-            ], 201);
-        } catch (\Exception $e) {
+                'message' => 'Data kategori berhasil diambil',
+                'data' => $kategoris
+            ], 200);
+        } catch (Exception $e) {
             return response()->json([
                 'status' => false,
-            'message' => $e->getMessage(),
-        ],500);
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
-     public function destroy(string $id)
+
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'nama_kategori' => 'required|string|max:255|unique:kategoris,nama_kategori'
+            ]);
+
+            $kategori = Kategori::create($validated);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Kategori berhasil dibuat',
+                'data' => $kategori
+            ], 201);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, string $id)
     {
         try {
             $kategori = Kategori::find($id);
-            if (! $kategori) {
+
+            if (!$kategori) {
                 return response()->json([
-                'status' => false,
-            'message' => "data Kategori tidak ada",
-        ],404);
+                    'status' => false,
+                    'message' => 'Kategori tidak ditemukan'
+                ], 404);
             }
-            $kategori->delete();
+
+            $validated = $request->validate([
+                'nama_kategori' => 'sometimes|required|string|max:255|unique:kategoris,nama_kategori,' . $id
+            ]);
+
+            $kategori->update($validated);
+
             return response()->json([
                 'status' => true,
-            'message' => "data Kategori berhasi dihapus",
-        ],200);
-        } catch (\Exception $e) {
-             return response()->json([
+                'message' => 'Kategori berhasil diperbarui',
+                'data' => $kategori
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
                 'status' => false,
-            'message' => $e->getMessage(),
-        ],500);
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy(string $id)
+    {
+        try {
+            $kategori = Kategori::find($id);
+
+            if (!$kategori) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Kategori tidak ditemukan'
+                ], 404);
+            }
+
+            $kategori->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Kategori berhasil dihapus'
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }
