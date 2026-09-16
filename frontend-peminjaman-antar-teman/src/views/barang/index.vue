@@ -1,63 +1,80 @@
 <template>
-  <div class="page-container">
-    <div class="content-wrapper">
-      
-      <div class="header-section">
-        <div>
-          <h2>Daftar Barang Saya</h2>
-          <p>Kelola barang-barang yang Anda miliki untuk dipinjamkan.</p>
+  <div class="pinjam-page">
+    <div class="main-card">
+      <!-- Top Bar / Card Header -->
+      <div class="card-top">
+        <div class="header-left">
+          <router-link to="/dashboard" class="btn-back" title="Kembali ke Beranda">
+            <i class="bi bi-arrow-left"></i>
+          </router-link>
+          <div class="title-group">
+            <span class="sub-title">Inventaris Saya</span>
+            <h2>Daftar Barang Saya</h2>
+          </div>
         </div>
         <router-link to="/barang/tambah" class="btn-add">
-          + Tambah Barang
+          <i class="bi bi-plus-lg"></i> Tambah Barang
         </router-link>
       </div>
 
-      <div class="table-card">
+      <!-- Table Wrapper -->
+      <div class="table-wrapper">
         <table class="custom-table">
           <thead>
             <tr>
-              <th>No</th>
-              <th>Nama Barang</th>
-              <th>Kategori</th>
+              <th style="width: 50px;" class="text-center">No</th>
+              <th style="width: 160px;">Nama Barang</th>
+              <th style="width: 120px;">Kategori</th>
               <th>Deskripsi</th>
-              <th>Kondisi</th>
-              <th>Status</th>
-              <th>Aksi</th>
+              <th style="width: 120px;" class="text-center">Kondisi</th>
+              <th style="width: 120px;" class="text-center">Status</th>
+              <th style="width: 140px;" class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
+            <!-- State Loading -->
             <tr v-if="loading">
-              <!-- Ubah colspan menjadi 7 karena ada 7 kolom -->
-              <td colspan="7" class="empty-state">Memuat data...</td>
+              <td colspan="7" class="empty-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <p>Memuat data barang...</p>
+              </td>
             </tr>
-            <tr v-else-if="barangs.length === 0">
-              <td colspan="7" class="empty-state">Belum ada barang. Silakan tambahkan.</td>
-            </tr>
-            <tr v-for="(barang, index) in barangs" :key="barang.id" v-else>
-              <td>{{ index + 1 }}</td>
-              <td class="text-bold">{{ barang.nama_barang }}</td>
-              <td>{{ barang.kategori?.nama_kategori || '-' }}</td>
-              
-              <!-- TAMBAHAN: Kolom Deskripsi yang hilang -->
-              <td>{{ barang.deskripsi || '-' }}</td>
 
+            <!-- State Empty -->
+            <tr v-else-if="barangs.length === 0">
+              <td colspan="7" class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Belum ada barang. Silakan tambahkan barang baru.</p>
+              </td>
+            </tr>
+
+            <!-- Data Loop -->
+            <tr v-for="(barang, index) in barangs" :key="barang.id" v-else>
+              <td class="text-center id-col">#{{ index + 1 }}</td>
+              <td class="name-col">{{ barang.nama_barang }}</td>
               <td>
-                <span :class="['badge', kondisiClass(barang.kondisi)]">
+                <span class="tag-kategori-barang">
+                  {{ barang.kategori?.nama_kategori || '-' }}
+                </span>
+              </td>
+              <td class="desc-col">{{ barang.deskripsi || '-' }}</td>
+              <td class="text-center">
+                <span :class="['tag-status', kondisiClass(barang.kondisi)]">
                   {{ getKondisiText(barang.kondisi) }}
                 </span>
               </td>
-              <td>
-                <span :class="['badge', statusClass(barang.status)]">
+              <td class="text-center">
+                <span :class="['tag-status', statusClass(barang.status)]">
                   {{ getStatusText(barang.status) }}
                 </span>
               </td>
-              <td>
+              <td class="action-col">
                 <div class="action-buttons">
-                  <button @click="openEditModal(barang)" class="btn-action btn-edit">
-                    Edit
+                  <button @click="openEditModal(barang)" class="btn-icon edit" title="Edit Barang">
+                    <i class="bi bi-pencil-fill"></i>
                   </button>
-                  <button @click="handleDelete(barang.id)" class="btn-action btn-delete">
-                    Hapus
+                  <button @click="handleDelete(barang.id)" class="btn-icon delete" title="Hapus Barang">
+                    <i class="bi bi-trash-fill"></i>
                   </button>
                 </div>
               </td>
@@ -67,7 +84,7 @@
       </div>
     </div>
 
-    <!-- Modal Edit -->
+    <!-- Modal Edit Barang -->
     <div v-if="showModal" class="modal-overlay">
       <div class="form-card modal-content">
         <div class="form-header">
@@ -91,7 +108,6 @@
 
           <div class="form-group">
             <label>Deskripsi</label>
-            <!-- PERBAIKAN: Pindahkan error text ke LUAR textarea -->
             <textarea v-model="editForm.deskripsi" rows="3" required class="input-control"></textarea>
             <p v-if="errors.deskripsi" class="error-text">{{ errors.deskripsi[0] }}</p>
           </div>
@@ -114,7 +130,6 @@
         </form>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -233,201 +248,271 @@ export default {
     },
 
     kondisiClass(k) {
-      const map = { B: 'badge-green', R: 'badge-yellow', P: 'badge-red' };
-      return map[k] || 'badge-gray';
+      const map = { B: 'baik', R: 'rusak', P: 'diperbaiki' };
+      return map[k] || 'batal';
     },
 
     statusClass(s) {
-      const map = { T: 'badge-blue', D: 'badge-purple', M: 'badge-gray' };
-      return map[s] || 'badge-gray';
+      const map = { T: 'tersedia', D: 'dipinjam', M: 'maintenance' };
+      return map[s] || 'batal';
     }
   }
 };
 </script>
 
 <style scoped>
-/* Mewarisi tema dari AddPinjaman.vue */
-.page-container {
-  min-height: 100vh;
+/* Layout Utama Halaman (Disamakan dengan Peminjaman) */
+.pinjam-page {
   background-color: #FDFBF7;
-  padding: 24px;
+  min-height: 100vh;
+  padding: 40px 24px;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #003049;
+  box-sizing: border-box;
 }
 
-.content-wrapper {
-  max-width: 900px;
+.main-card {
+  background: #ffffff;
+  max-width: 1100px;
   margin: 0 auto;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 48, 73, 0.06);
+  border: 1px solid #E2E8F0;
 }
 
-.header-section {
+/* Header Atas (Card Top) */
+.card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #EDF2F7;
 }
 
-.header-section h2 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-color: #F0F4F8;
   color: #003049;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 18px;
+  transition: all 0.2s ease;
 }
 
-.header-section p {
-  margin: 0;
-  color: #718096;
-  font-size: 13px;
+.btn-back:hover {
+  background-color: #003049;
+  color: #ffffff;
+}
+
+.title-group .sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #F77F00;
+  display: block;
+}
+
+.title-group h2 {
+  margin: 2px 0 0 0;
+  color: #003049;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .btn-add {
   background-color: #F77F00;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-size: 13px;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 10px;
   font-weight: 700;
-  transition: background 0.2s;
+  font-size: 13px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
 }
 
 .btn-add:hover {
-  background-color: #e67100;
+  background-color: #E07300;
 }
 
-/* Styling Tabel */
-.table-card {
-  background: #ffffff;
-  border-radius: 16px;
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  overflow: hidden;
+/* Tabel Custom */
+.table-wrapper {
+  overflow-x: auto;
 }
 
 .custom-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.custom-table thead {
-  background-color: #F8F9FA;
-  border-bottom: 1px solid #E2E8F0;
+  text-align: left;
 }
 
 .custom-table th {
-  text-align: left;
-  padding: 14px 16px;
-  font-size: 12px;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #718096;
+  border-bottom: 2px solid #EDF2F7;
+}
+
+.custom-table td {
+  padding: 16px 14px;
+  border-bottom: 1px solid #F7FAFC;
+  font-size: 14px;
+  color: #2D3748;
+  vertical-align: middle;
+}
+
+.id-col {
+  color: #A0AEC0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.name-col {
   font-weight: 700;
   color: #003049;
 }
 
-.custom-table td {
-  padding: 14px 16px;
+.desc-col {
+  color: #4A5568;
   font-size: 13px;
-  border-bottom: 1px solid #F1F5F9;
 }
 
-.custom-table tr:last-child td {
-  border-bottom: none;
-}
-
-.text-bold {
-  font-weight: 600;
-}
-
-.empty-state {
-  text-align: center;
-  color: #A0AEC0;
-  padding: 40px 16px;
-}
-
-/* Styling Badge */
-.badge {
+.tag-kategori-barang {
+  background-color: #F0F4F8;
+  color: #003049;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   display: inline-block;
 }
 
-.badge-green { background: rgba(34, 197, 94, 0.1); color: #15803d; }
-.badge-yellow { background: rgba(234, 179, 8, 0.1); color: #a16207; }
-.badge-red { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
-.badge-blue { background: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
-.badge-purple { background: rgba(147, 51, 234, 0.1); color: #6b21a8; }
-.badge-gray { background: #E2E8F0; color: #475569; }
+/* Style Badge Kondisi & Status */
+.tag-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-block;
+}
 
-/* Styling Tombol Aksi */
+/* Kondisi Barang */
+.tag-status.baik { background-color: #E8F5E9; color: #2E7D32; }
+.tag-status.rusak { background-color: #FFF3E0; color: #E65100; }
+.tag-status.diperbaiki { background-color: #FFEBEE; color: #C62828; }
+
+/* Status Barang */
+.tag-status.tersedia { background-color: #E3F2FD; color: #1565C0; }
+.tag-status.dipinjam { background-color: #F3E5F5; color: #7B1FA2; }
+.tag-status.maintenance { background-color: #ECEFF1; color: #455A64; }
+.tag-status.batal { background-color: #F0F0F0; color: #999999; }
+
+/* Tombol Aksi */
+.action-col {
+  vertical-align: middle;
+}
+
 .action-buttons {
   display: flex;
+  justify-content: center;
   gap: 8px;
 }
 
-.btn-action {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
+.btn-icon {
+  width: 34px;
+  height: 34px;
   border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-action:hover { opacity: 0.85; }
-
-.btn-edit {
-  background-color: #E2E8F0;
-  color: #003049;
-}
-
-.btn-delete {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
-}
-
-/* Styling Modal & Form */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform 0.1s ease;
+}
+
+.btn-icon:hover {
+  transform: translateY(-1px);
+}
+
+.btn-icon.edit { background-color: #FFF8E1; color: #F57F17; }
+.btn-icon.delete { background-color: #FFEBEE; color: #C62828; }
+
+.text-center { text-align: center; }
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #A0AEC0;
+}
+
+.empty-state i {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Modal Edit Styling */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 48, 73, 0.4);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
   padding: 24px;
 }
 
 .modal-content {
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
 }
 
 .form-card {
   background: #ffffff;
-  padding: 32px;
+  padding: 28px;
   border-radius: 16px;
   border: 1px solid #E2E8F0;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 .form-header h2 {
   color: #003049;
-  margin: 0 0 6px 0;
-  font-size: 22px;
+  margin: 0 0 4px 0;
+  font-size: 20px;
 }
 
 .form-header p {
   color: #718096;
   font-size: 13px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .form-body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .form-group {
@@ -454,11 +539,11 @@ export default {
 }
 
 .input-control:focus, .input-select:focus {
-  border-color: #003049;
+  border-color: #F77F00;
 }
 
 .error-text {
-  color: #b91c1c;
+  color: #D62828;
   font-size: 11px;
   margin: 0;
 }
@@ -466,7 +551,7 @@ export default {
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .btn-save {
@@ -474,7 +559,7 @@ export default {
   background-color: #F77F00;
   color: white;
   border: none;
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
@@ -490,7 +575,7 @@ export default {
   background-color: transparent;
   color: #718096;
   border: 1px solid #CBD5E0;
-  padding: 12px 20px;
+  padding: 10px 18px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;

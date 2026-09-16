@@ -3,8 +3,7 @@
     <aside class="sidebar">
       <div class="logo">
         <router-link to="/">
-          <i class="bi bi-inbox-fill"></i>
-          <h2>PinjamTeman</h2>
+          <h2>JaMan</h2>
         </router-link>
       </div>
       <nav class="nav-menu">
@@ -19,7 +18,6 @@
 
     <main class="main-content">
       <header class="topbar">
-        <input type="text" placeholder="Cari transaksi..." class="search-input" />
         <div class="user-profile">
           <span class="notification-icon">🔔</span>
 
@@ -35,13 +33,6 @@
                 <p class="dropdown-name">{{ userName }}</p>
                 <p class="dropdown-email">{{ userEmail }}</p>
               </div>
-              <hr class="dropdown-divider" />
-              <a href="#" class="dropdown-item">
-                <i class="bi bi-person"></i> Profil Saya
-              </a>
-              <a href="#" class="dropdown-item">
-                <i class="bi bi-gear"></i> Pengaturan
-              </a>
               <hr class="dropdown-divider" />
               <button class="dropdown-item dropdown-logout" @click="handleLogout" :disabled="loggingOut">
                 <i class="bi bi-box-arrow-right"></i>
@@ -307,7 +298,7 @@ export default {
 
 .topbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 24px;
 }

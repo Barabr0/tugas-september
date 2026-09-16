@@ -2,25 +2,12 @@
   <div class="add-container">
     <div class="form-card">
       <div class="form-header">
-        <h2>Catat Pinjaman Baru</h2>
-        <p>Isi formulir untuk mencatat pinjaman uang atau barang dengan teman.</p>
+        <h2>Ajukan Pinjaman</h2>
+        <p>Pilih teman dan barang/uang yang ingin kamu pinjam.</p>
       </div>
 
       <form @submit.prevent="saveTransaction" class="form-body">
-        <div class="form-group">
-          <label>Jenis Transaksi</label>
-          <div class="radio-group">
-            <label :class="['radio-btn', { active: form.category === 'Orang Lain Meminjam' }]">
-              <input type="radio" value="Orang Lain Meminjam" v-model="form.category" />
-              <span>📈 Teman Meminjam (Piutang)</span>
-            </label>
-            <label :class="['radio-btn', { active: form.category === 'Saya Meminjam' }]">
-              <input type="radio" value="Saya Meminjam" v-model="form.category" />
-              <span>📉 Saya Meminjam (Hutang)</span>
-            </label>
-          </div>
-        </div>
-
+        
         <div class="form-group">
           <label>Tipe Pinjaman</label>
           <select v-model="form.type" class="input-select">
@@ -30,13 +17,14 @@
         </div>
 
         <div class="form-group">
-          <label for="name">Nama Teman</label>
+          <label for="name">Pinjam Dari (Nama Teman)</label>
           <select id="name" v-model="form.temanId" required class="input-control">
             <option value="" disabled>Pilih teman</option>
             <option v-for="u in daftarUser" :key="u.id" :value="u.id">{{ u.name }}</option>
           </select>
         </div>
 
+        <!-- FORM JIKA MEMINJAM UANG -->
         <div class="form-group" v-if="form.type === 'uang'">
           <label for="nominal">Nominal (Rp)</label>
           <input
@@ -49,18 +37,28 @@
             class="input-control"
           />
         </div>
+        
+        <!-- FORM JIKA MEMINJAM BARANG -->
         <div class="form-group" v-else>
           <label for="barang">Pilih Barang</label>
-          <select id="barang" v-model="form.barangId" class="input-control">
-            <option value="" disabled>Pilih barang</option>
-            <option v-for="b in daftarBarang" :key="b.id" :value="b.id">
+          <select 
+            id="barang" 
+            v-model="form.barangId" 
+            class="input-control" 
+            required 
+            :disabled="!form.temanId"
+          >
+            <option value="" disabled>
+              {{ form.temanId ? 'Pilih barang' : 'Pilih teman dulu' }}
+            </option>
+            <option v-for="b in barangTersediaUntukTeman" :key="b.id" :value="b.id">
               {{ b.nama_barang }}
             </option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="dueDate">Tanggal Tanggung Jawab / Kembali</label>
+          <label for="dueDate">Tanggal Harus Kembali / Lunas</label>
           <input
             id="dueDate"
             v-model="form.dueDate"
@@ -73,7 +71,7 @@
         <div class="form-actions">
           <button type="button" class="btn-cancel" @click="cancel">Batal</button>
           <button type="submit" class="btn-save" :disabled="loading">
-            {{ loading ? 'Menyimpan...' : 'Simpan Transaksi' }}
+            {{ loading ? 'Menyimpan...' : 'Ajukan Pinjaman' }}
           </button>
         </div>
       </form>
@@ -84,14 +82,14 @@
 <script>
 import { getUsers } from '../../utils/user';
 import { ajukanPinjamUang } from '../../utils/peminjamanUang';
-import { ajukanPinjamBarang, getBarangTersedia } from '../../utils/peminjaman';
+import { ajukanPinjamBarang } from '../../utils/peminjaman';
+import barangApi from '../../utils/barang'; // Import dari barang.js
 
 export default {
   name: 'AddPinjaman',
   data() {
     return {
       form: {
-        category: 'Orang Lain Meminjam',
         type: 'uang',
         temanId: '',
         nominal: null,
@@ -103,54 +101,70 @@ export default {
       loading: false
     };
   },
-  async mounted() {
+  computed: {
+    // Filter otomatis: Hanya tampilkan barang milik teman yang dipilih
+    barangTersediaUntukTeman() {
+      if (!this.form.temanId) return [];
+      return this.daftarBarang.filter(b => b.user_id === this.form.temanId);
+    }
+  },
+  watch: {
+    // Reset pilihan barang jika ganti teman
+    'form.temanId'() {
+      this.form.barangId = '';
+    }
+  },
+ async mounted() {
     try {
       const resUser = await getUsers();
-      this.daftarUser = resUser.data.data;
+      this.daftarUser = resUser.data.data || resUser.data || [];
 
-      const resBarang = await getBarangTersedia();
-      this.daftarBarang = resBarang.data.data;
+      // AMBIL DARI barangApi
+      const resBarang = await barangApi.getBarangTersedia(); 
+      this.daftarBarang = resBarang.data.data || resBarang.data || [];
     } catch (e) {
       console.error('Gagal memuat data awal', e);
+      this.$toast.error('Gagal memuat data');
     }
   },
   methods: {
     async saveTransaction() {
       if (!this.form.temanId) {
-        alert('Pilih teman terlebih dahulu.');
+        this.$toast.error('Pilih teman terlebih dahulu.');
         return;
       }
       if (!this.form.dueDate) {
-        alert('Tanggal wajib diisi.');
+        this.$toast.error('Tanggal wajib diisi.');
         return;
       }
 
       this.loading = true;
       const hariIni = new Date().toISOString().split('T')[0];
-      const arah = this.form.category === 'Orang Lain Meminjam' ? 'piutang' : 'hutang';
 
       try {
         if (this.form.type === 'uang') {
           if (!this.form.nominal || this.form.nominal <= 0) {
-            alert('Nominal wajib diisi.');
+            this.$toast.error('Nominal wajib diisi.');
             this.loading = false;
             return;
           }
 
+          // Kirim request pinjam uang
           await ajukanPinjamUang({
             teman_id: this.form.temanId,
-            arah: arah,
+            arah: 'hutang', // Karena kita yang meminjam
             nominal: this.form.nominal,
             tgl_pinjam: hariIni,
             tgl_tenggat: this.form.dueDate,
           });
         } else {
           if (!this.form.barangId) {
-            alert('Pilih barang terlebih dahulu.');
+            this.$toast.error('Pilih barang terlebih dahulu.');
             this.loading = false;
             return;
           }
 
+          // Kirim request pinjam barang
           await ajukanPinjamBarang({
             barang_ids: [this.form.barangId],
             tgl_pinjam: hariIni,
@@ -158,12 +172,12 @@ export default {
           });
         }
 
-        alert('Berhasil menyimpan catatan pinjaman!');
+        this.$toast.success('Berhasil mengajukan pinjaman!');
         this.$router.push('/dashboard');
 
       } catch (error) {
         const pesan = error.response?.data?.message || 'Gagal menyimpan transaksi.';
-        alert(pesan);
+        this.$toast.error(pesan);
       } finally {
         this.loading = false;
       }
@@ -226,33 +240,6 @@ export default {
   color: #003049;
 }
 
-.radio-group {
-  display: flex;
-  gap: 10px;
-}
-
-.radio-btn {
-  flex: 1;
-  border: 1px solid #E2E8F0;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-  background: #F8F9FA;
-}
-
-.radio-btn input {
-  display: none;
-}
-
-.radio-btn.active {
-  border-color: #F77F00;
-  background-color: rgba(247, 127, 0, 0.1);
-  color: #F77F00;
-}
-
 .input-control, .input-select {
   padding: 10px 14px;
   border: 1px solid #E2E8F0;
@@ -261,20 +248,11 @@ export default {
   outline: none;
   width: 100%;
   box-sizing: border-box;
+  font-family: inherit;
 }
 
 .input-control:focus, .input-select:focus {
   border-color: #003049;
-}
-
-.select-multi {
-  height: 100px;
-}
-
-.hint {
-  font-size: 11px;
-  color: #A0AEC0;
-  margin-top: 4px;
 }
 
 .form-actions {
@@ -292,6 +270,7 @@ export default {
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .btn-save:disabled {
@@ -307,5 +286,6 @@ export default {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+  font-size: 13px;
 }
 </style>

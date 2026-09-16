@@ -12,6 +12,9 @@ import create_barang from '../views/barang/create.vue';
 import kategori from '../views/kategori/index.vue';
 import create_kategori from '../views/kategori/create.vue';
 
+// Admin
+import Admindashboard from '../views/Admin/dashboardAdmin.vue';
+
 const routes = [
   { path: '/', name: 'Home', component: Home },
   { path: '/login', name: 'Login', component: Login },
@@ -24,6 +27,9 @@ const routes = [
   { path: '/barang/tambah', name: 'barang_tambah', component: create_barang, meta: { requireAuth: true } },
   { path: '/kategori', name: 'kategori', component: kategori, meta: { requireAuth: true } },
   { path: '/kategori/tambah', name: 'kategori_tambah', component: create_kategori, meta: { requireAuth: true } },
+
+  // Admin
+  { path : '/admin/dashboard', name: 'Admindashboard', component: Admindashboard, meta: { requireAuth: true } },
 ];
 
 const router = createRouter({

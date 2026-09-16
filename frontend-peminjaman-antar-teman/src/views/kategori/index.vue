@@ -1,44 +1,62 @@
 <template>
-  <div class="page-container">
-    <div class="content-wrapper">
-      
-      <div class="header-section">
-        <div>
-          <h2>Daftar Kategori</h2>
-          <p>Kelola kategori barang yang tersedia.</p>
+  <div class="pinjam-page">
+    <div class="main-card">
+      <!-- Card Top Header -->
+      <div class="card-top">
+        <div class="header-left">
+          <router-link to="/dashboard" class="btn-back" title="Kembali ke Beranda">
+            <i class="bi bi-arrow-left"></i>
+          </router-link>
+          <div class="title-group">
+            <span class="sub-title">Pengaturan Sistem</span>
+            <h2>Daftar Kategori</h2>
+          </div>
         </div>
-        <router-link to="/kategori/tambah" class="btn-add">
-          + Tambah Kategori
-        </router-link>
+        <button class="btn-add" @click="openAddModal">
+          <i class="bi bi-plus-lg"></i> Tambah Kategori
+        </button>
       </div>
 
-      <div class="table-card">
+      <!-- Table Wrapper -->
+      <div class="table-wrapper">
         <table class="custom-table">
           <thead>
             <tr>
-              <th>No</th>
+              <th style="width: 60px;" class="text-center">No</th>
               <th>Nama Kategori</th>
-              <th>Aksi</th>
+              <th style="width: 140px;" class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
+            <!-- State Loading -->
             <tr v-if="loading">
-              <!-- Ubah colspan menjadi 7 karena ada 7 kolom -->
-              <td colspan="7" class="empty-state">Memuat data...</td>
+              <td colspan="3" class="empty-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <p>Memuat data kategori...</p>
+              </td>
             </tr>
-            <tr v-else-if="barangs.length === 0">
-              <td colspan="7" class="empty-state">Belum ada barang. Silakan tambahkan.</td>
+
+            <!-- State Empty -->
+            <tr v-else-if="kategoris.length === 0">
+              <td colspan="3" class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p>Belum ada kategori. Silakan tambahkan kategori baru.</p>
+              </td>
             </tr>
+
+            <!-- Data Loop -->
             <tr v-for="(kategori, index) in kategoris" :key="kategori.id" v-else>
-              <td>{{ index + 1 }}</td>
-              <td class="text-bold">{{ kategori.nama_kategori }}</td>
-              <td>
+              <td class="text-center id-col">#{{ index + 1 }}</td>
+              <td class="name-col">
+                <span class="tag-kategori-item">{{ kategori.nama_kategori }}</span>
+              </td>
+              <td class="action-col">
                 <div class="action-buttons">
-                  <button @click="openEditModal(kategori)" class="btn-action btn-edit">
-                    Edit
+                  <button @click="openEditModal(kategori)" class="btn-icon edit" title="Edit Kategori">
+                    <i class="bi bi-pencil-fill"></i>
                   </button>
-                  <button @click="handleDelete(kategori.id)" class="btn-action btn-delete">
-                    Hapus
+                  <button @click="handleDelete(kategori.id)" class="btn-icon delete" title="Hapus Kategori">
+                    <i class="bi bi-trash-fill"></i>
                   </button>
                 </div>
               </td>
@@ -48,92 +66,82 @@
       </div>
     </div>
 
-    <!-- Modal Edit -->
+    <!-- Modal Tambah / Edit Kategori -->
     <div v-if="showModal" class="modal-overlay">
       <div class="form-card modal-content">
         <div class="form-header">
-          <h2>Edit Barang</h2>
-          <p>Perbarui detail barang Anda.</p>
+          <h2>{{ isEditMode ? 'Edit Kategori' : 'Tambah Kategori' }}</h2>
+          <p>{{ isEditMode ? 'Perbarui nama kategori barang.' : 'Buat kategori baru untuk mengelompokkan barang.' }}</p>
         </div>
 
-        <form @submit.prevent="handleUpdate" class="form-body">
+        <form @submit.prevent="handleSubmit" class="form-body">
           <div class="form-group">
             <label>Nama Kategori</label>
-            <input v-model="editForm.nama_kategori" type="text" required class="input-control" />
+            <input v-model="form.nama_kategori" type="text" placeholder="Masukkan nama kategori" required class="input-control" />
             <p v-if="errors.nama_kategori" class="error-text">{{ errors.nama_kategori[0] }}</p>
           </div>
 
           <div class="form-actions">
             <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
-            <button type="submit" class="btn-save" :disabled="updating">
-              {{ updating ? 'Menyimpan...' : 'Simpan Perubahan' }}
+            <button type="submit" class="btn-save" :disabled="saving">
+              {{ saving ? 'Menyimpan...' : 'Simpan Kategori' }}
             </button>
           </div>
         </form>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
-import barangApi from '@/utils/barang';
 import kategoriApi from '@/utils/kategori';
 
 export default {
-  name: 'ListBarang',
+  name: 'ListKategori',
   data() {
     return {
-      barangs: [],
       kategoris: [],
       loading: false,
       showModal: false,
-      updating: false,
-      editForm: {
+      isEditMode: false,
+      saving: false,
+      form: {
         id: null,
-        nama_barang: '',
-        kategori_id: '',
-        deskripsi: '',
-        kondisi: 'B',
+        nama_kategori: ''
       },
       errors: {}
     };
   },
   mounted() {
-    this.fetchBarangs();
     this.fetchKategoris();
   },
   methods: {
-    async fetchBarangs() {
-      this.loading = true;
-      try {
-        const response = await barangApi.getMyBarangs();
-        this.barangs = response.data?.data || response.data || [];
-      } catch (error) {
-        console.error('Gagal mengambil data barang:', error);
-        alert('Gagal memuat data barang.');
-      } finally {
-        this.loading = false;
-      }
-    },
-
     async fetchKategoris() {
+      this.loading = true;
       try {
         const response = await kategoriApi.getAll();
         this.kategoris = response.data?.data || response.data || [];
       } catch (error) {
         console.error('Gagal mengambil kategori:', error);
+        alert('Gagal memuat data kategori.');
+      } finally {
+        this.loading = false;
       }
     },
 
-    openEditModal(barang) {
+    openAddModal() {
+      this.isEditMode = false;
       this.errors = {};
-      this.editForm = {
-        id: barang.id,
-        nama_barang: barang.nama_barang,
-        kategori_id: barang.kategori_id,
-        deskripsi: barang.deskripsi,
-        kondisi: barang.kondisi
+      this.form = { id: null, nama_kategori: '' };
+      this.showModal = true;
+    },
+
+    openEditModal(kategori) {
+      this.isEditMode = true;
+      this.errors = {};
+      this.form = {
+        id: kategori.id,
+        nama_kategori: kategori.nama_kategori
       };
       this.showModal = true;
     },
@@ -143,249 +151,276 @@ export default {
       this.errors = {};
     },
 
-    async handleUpdate() {
-      this.updating = true;
+    async handleSubmit() {
+      this.saving = true;
       this.errors = {};
       try {
-        await barangApi.updateBarang(this.editForm.id, this.editForm);
+        if (this.isEditMode) {
+          await kategoriApi.updateKategori(this.form.id, { nama_kategori: this.form.nama_kategori });
+          alert('Kategori berhasil diperbarui!');
+        } else {
+          await kategoriApi.addKategori({ nama_kategori: this.form.nama_kategori });
+          alert('Kategori berhasil ditambahkan!');
+        }
         this.closeModal();
-        await this.fetchBarangs();
-        alert('Barang berhasil diperbarui!');
+        await this.fetchKategoris();
       } catch (error) {
         if (error.response && error.response.status === 422) {
           this.errors = error.response.data.errors || {};
         } else {
-          alert('Terjadi kesalahan saat memperbarui barang.');
+          alert('Terjadi kesalahan saat menyimpan kategori.');
           console.error(error);
         }
       } finally {
-        this.updating = false;
+        this.saving = false;
       }
     },
 
     async handleDelete(id) {
-      if (!confirm('Apakah Anda yakin ingin menghapus barang ini?')) return;
-      
+      if (!confirm('Apakah Anda yakin ingin menghapus kategori ini?')) return;
+
       try {
-        await barangApi.deleteBarang(id);
-        this.barangs = this.barangs.filter(b => b.id !== id);
-        alert('Barang berhasil dihapus.');
+        await kategoriApi.deleteKategori(id);
+        this.kategoris = this.kategoris.filter(k => k.id !== id);
+        alert('Kategori berhasil dihapus.');
       } catch (error) {
         if (error.response && error.response.status === 409) {
-          alert(error.response.data.message || 'Barang tidak dapat dihapus karena sedang digunakan.');
+          alert(error.response.data.message || 'Kategori tidak dapat dihapus karena masih dipakai barang.');
         } else {
-          alert('Gagal menghapus barang.');
+          alert('Gagal menghapus kategori.');
           console.error(error);
         }
       }
-    },
-
-    getKondisiText(k) {
-      const map = { B: 'Baik', R: 'Rusak', P: 'Diperbaiki' };
-      return map[k] || '-';
-    },
-
-    getStatusText(s) {
-      const map = { T: 'Tersedia', D: 'Dipinjam', M: 'Maintenance' };
-      return map[s] || '-';
-    },
-
-    kondisiClass(k) {
-      const map = { B: 'badge-green', R: 'badge-yellow', P: 'badge-red' };
-      return map[k] || 'badge-gray';
-    },
-
-    statusClass(s) {
-      const map = { T: 'badge-blue', D: 'badge-purple', M: 'badge-gray' };
-      return map[s] || 'badge-gray';
     }
   }
 };
 </script>
 
 <style scoped>
-/* Mewarisi tema dari AddPinjaman.vue */
-.page-container {
-  min-height: 100vh;
+/* Page Layout Disamakan Persis dengan Peminjaman & Barang */
+.pinjam-page {
   background-color: #FDFBF7;
-  padding: 24px;
+  min-height: 100vh;
+  padding: 40px 24px;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #003049;
+  box-sizing: border-box;
 }
 
-.content-wrapper {
-  max-width: 900px;
+.main-card {
+  background: #ffffff;
+  max-width: 1100px;
   margin: 0 auto;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 48, 73, 0.06);
+  border: 1px solid #E2E8F0;
 }
 
-.header-section {
+/* Header Top */
+.card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #EDF2F7;
 }
 
-.header-section h2 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-color: #F0F4F8;
   color: #003049;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 18px;
+  transition: all 0.2s ease;
 }
 
-.header-section p {
-  margin: 0;
-  color: #718096;
-  font-size: 13px;
+.btn-back:hover {
+  background-color: #003049;
+  color: #ffffff;
+}
+
+.title-group .sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #F77F00;
+  display: block;
+}
+
+.title-group h2 {
+  margin: 2px 0 0 0;
+  color: #003049;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .btn-add {
   background-color: #F77F00;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-size: 13px;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 10px;
   font-weight: 700;
-  transition: background 0.2s;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
 }
 
 .btn-add:hover {
-  background-color: #e67100;
+  background-color: #E07300;
 }
 
-/* Styling Tabel */
-.table-card {
-  background: #ffffff;
-  border-radius: 16px;
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  overflow: hidden;
+/* Tabel Custom */
+.table-wrapper {
+  overflow-x: auto;
 }
 
 .custom-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.custom-table thead {
-  background-color: #F8F9FA;
-  border-bottom: 1px solid #E2E8F0;
+  text-align: left;
 }
 
 .custom-table th {
-  text-align: left;
-  padding: 14px 16px;
-  font-size: 12px;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #718096;
+  border-bottom: 2px solid #EDF2F7;
+}
+
+.custom-table td {
+  padding: 16px 14px;
+  border-bottom: 1px solid #F7FAFC;
+  font-size: 14px;
+  color: #2D3748;
+  vertical-align: middle;
+}
+
+.id-col {
+  color: #A0AEC0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.name-col {
   font-weight: 700;
   color: #003049;
 }
 
-.custom-table td {
-  padding: 14px 16px;
-  font-size: 13px;
-  border-bottom: 1px solid #F1F5F9;
+.tag-kategori-item {
+  color: #003049;
+  font-weight: 700;
+  font-size: 14px;
 }
 
-.custom-table tr:last-child td {
-  border-bottom: none;
+/* Tombol Aksi */
+.action-col {
+  vertical-align: middle;
 }
 
-.text-bold {
-  font-weight: 600;
-}
-
-.empty-state {
-  text-align: center;
-  color: #A0AEC0;
-  padding: 40px 16px;
-}
-
-/* Styling Badge */
-.badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  display: inline-block;
-}
-
-.badge-green { background: rgba(34, 197, 94, 0.1); color: #15803d; }
-.badge-yellow { background: rgba(234, 179, 8, 0.1); color: #a16207; }
-.badge-red { background: rgba(239, 68, 68, 0.1); color: #b91c1c; }
-.badge-blue { background: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
-.badge-purple { background: rgba(147, 51, 234, 0.1); color: #6b21a8; }
-.badge-gray { background: #E2E8F0; color: #475569; }
-
-/* Styling Tombol Aksi */
 .action-buttons {
   display: flex;
+  justify-content: center;
   gap: 8px;
 }
 
-.btn-action {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
+.btn-icon {
+  width: 34px;
+  height: 34px;
   border: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-action:hover { opacity: 0.85; }
-
-.btn-edit {
-  background-color: #E2E8F0;
-  color: #003049;
-}
-
-.btn-delete {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
-}
-
-/* Styling Modal & Form */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform 0.1s ease;
+}
+
+.btn-icon:hover {
+  transform: translateY(-1px);
+}
+
+.btn-icon.edit { background-color: #FFF8E1; color: #F57F17; }
+.btn-icon.delete { background-color: #FFEBEE; color: #C62828; }
+
+.text-center { text-align: center; }
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #A0AEC0;
+}
+
+.empty-state i {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Styling Modal Edit / Tambah */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 48, 73, 0.4);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
   padding: 24px;
 }
 
 .modal-content {
   width: 100%;
-  max-width: 500px;
+  max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
 }
 
 .form-card {
   background: #ffffff;
-  padding: 32px;
+  padding: 28px;
   border-radius: 16px;
   border: 1px solid #E2E8F0;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 .form-header h2 {
   color: #003049;
-  margin: 0 0 6px 0;
-  font-size: 22px;
+  margin: 0 0 4px 0;
+  font-size: 20px;
 }
 
 .form-header p {
   color: #718096;
   font-size: 13px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .form-body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .form-group {
@@ -400,7 +435,7 @@ export default {
   color: #003049;
 }
 
-.input-control, .input-select {
+.input-control {
   padding: 10px 14px;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
@@ -411,12 +446,12 @@ export default {
   font-family: inherit;
 }
 
-.input-control:focus, .input-select:focus {
-  border-color: #003049;
+.input-control:focus {
+  border-color: #F77F00;
 }
 
 .error-text {
-  color: #b91c1c;
+  color: #D62828;
   font-size: 11px;
   margin: 0;
 }
@@ -424,7 +459,7 @@ export default {
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .btn-save {
@@ -432,7 +467,7 @@ export default {
   background-color: #F77F00;
   color: white;
   border: none;
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
@@ -448,7 +483,7 @@ export default {
   background-color: transparent;
   color: #718096;
   border: 1px solid #CBD5E0;
-  padding: 12px 20px;
+  padding: 10px 18px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
