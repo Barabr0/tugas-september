@@ -1,52 +1,7 @@
 <template>
   <div class="admin-wrapper">
     <!-- 1. Sidebar Admin -->
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <i class="bi bi-shield-lock-fill brand-icon"></i>
-        <h2>JaMan <span>Admin</span></h2>
-      </div>
-
-      <nav class="sidebar-menu">
-        <div class="menu-label">UTAMA</div>
-        <router-link to="/admin/dashboard" class="menu-item active">
-          <i class="bi bi-grid-1x2-fill"></i>
-          <span>Dashboard</span>
-        </router-link>
-        <router-link to="/admin/barangs" class="menu-item">
-          <i class="bi bi-person-fill"></i>
-          <span>Kelola User</span>
-        </router-link>
-        <router-link to="/admin/barangs" class="menu-item">
-          <i class="bi bi-box-seam-fill"></i>
-          <span>Kelola Barang</span>
-        </router-link>
-        <router-link to="/admin/kategoris" class="menu-item">
-          <i class="bi bi-tags-fill"></i>
-          <span>Kategori Barang</span>
-        </router-link>
-
-        <div class="menu-label">SISTEM</div>
-        <router-link to="/admin/bantuan" class="menu-item">
-          <i class="bi bi-life-preserver"></i>
-          <span>Permintaan Bantuan</span>
-          <span v-if="bantuanRequests.length > 0" class="badge-dot-menu">{{ bantuanRequests.length }}</span>
-        </router-link>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="admin-profile">
-          <div class="avatar">A</div>
-          <div class="profile-info">
-            <span class="name">Super Admin</span>
-            <span class="role">admin@pinjamteman.id</span>
-          </div>
-        </div>
-        <button class="btn-logout" title="Keluar" @click="handleLogout">
-          <i class="bi bi-box-arrow-right"></i>
-        </button>
-      </div>
-    </aside>
+    <SidebarAdmin />
 
     <!-- 2. Main Content Area -->
     <main class="main-content">
@@ -175,11 +130,20 @@
 <script>
 import api from '@/utils/api'; 
 import adminApi from '@/utils/admin'; 
+import SidebarAdmin from '@/components/sidebarAdmin.vue';
 
 export default {
+  components: {
+    SidebarAdmin
+  },
   name: 'AdminDashboardView',
   data() {
     return {
+      // Tambahan untuk menyimpan data admin yang login
+      adminData: {
+        name: '',
+        email: ''
+      },
       users: [],
       barangs: [],
       bantuanRequests: [],
@@ -188,10 +152,32 @@ export default {
       loadingBantuan: false
     };
   },
+  computed: {
+    // Ambil huruf pertama untuk inisial avatar
+    userInitial() {
+      if (this.adminData.name) {
+        return this.adminData.name.charAt(0).toUpperCase();
+      }
+      return 'A'; // Default jika tidak ada nama
+    }
+  },
   mounted() {
+    this.loadAdminProfile(); // Panggil fungsi ambil profil
     this.fetchAdminData();
   },
   methods: {
+    loadAdminProfile() {
+      // Ambil data user dari localStorage (disimpan dalam bentuk string JSON saat login)
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          this.adminData = JSON.parse(userStr);
+        } catch (e) {
+          console.error('Gagal parse data user', e);
+        }
+      }
+    },
+
     async fetchAdminData() {
       this.loadingUsers = true;
       this.loadingBarangs = true;
@@ -208,7 +194,7 @@ export default {
       }
 
       try {
-        // Fetch Barangs (PANGGIL FUNGSI INI)
+        // Fetch Barangs
         const resBarangs = await adminApi.getAllBarangs();
         this.barangs = resBarangs.data.data || resBarangs.data || [];
       } catch (error) {
@@ -243,8 +229,12 @@ export default {
 
     handleLogout() {
       if (confirm('Yakin ingin keluar dari panel admin?')) {
+        // Hapus semua data sesi dari localStorage
         localStorage.removeItem('token');
         localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        
+        // Arahkan ke halaman login
         this.$router.push('/login');
       }
     }

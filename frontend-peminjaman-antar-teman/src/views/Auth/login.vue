@@ -84,15 +84,20 @@ export default {
       this.errorMessage = '';
 
       try {
-        const response = await login({
+        // Fungsi login dari utils/auth.js sudah menyimpan token & role ke localStorage
+        await login({
           email: this.email,
           password: this.password
         });
 
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.data));
+        // Ambil role dari localStorage untuk menentukan redirect
+        const role = localStorage.getItem('role');
 
-        this.$router.push('/dashboard');
+        if (role === 'admin') {
+          this.$router.push('/admin/dashboard'); // Jika Admin
+        } else {
+          this.$router.push('/dashboard'); // Jika User Biasa
+        }
       } catch (error) {
         if (error.response && error.response.status === 401) {
           this.errorMessage = 'Login gagal. Silakan periksa email dan kata sandi Anda.';

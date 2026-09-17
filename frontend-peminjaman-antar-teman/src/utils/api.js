@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Buat instance axios dengan base URL API Laravel kita
 const api = axios.create({
-  baseURL: 'http://10.10.10.252:8000/api',
+  baseURL: 'http://10.10.11.129:8000/api',
 })
 
 // Interceptor = "petugas" yang berjalan sebelum setiap request dikirim
