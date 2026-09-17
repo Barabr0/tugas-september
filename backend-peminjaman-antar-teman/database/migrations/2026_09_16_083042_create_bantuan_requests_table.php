@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('bantuan_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->string('tipe_request'); // 'barang' atau 'uang'
-            $table->foreignId('referensi_id'); // ID barang atau ID peminjaman
-            $table->string('aksi_diminta'); // 'edit', 'hapus', 'batalkan'
-            $table->text('alasan'); // Alasan user minta bantuan
-            $table->enum('status', ['pending', 'processed', 'rejected'])->default('pending');
+            $table->foreignId('peminta_id')->constrained('users')->onDelete('cascade'); // User yang meminta
+            $table->foreignId('target_id')->constrained('users')->onDelete('cascade');   // User yang diminta
+            $table->string('tipe_request'); // Contoh: 'Tagihan Uang', 'Kembalikan Barang'
+            $table->text('deskripsi');      // Rincian permintaan
+            $table->enum('status', ['pending', 'disetujui', 'ditolak'])->default('pending');
+            $table->text('alasan')->nullable(); // Diisi target user saat menolak/menyetujui
             $table->timestamps();
         });
     }

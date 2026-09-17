@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\BantuanController;
 use App\Http\Controllers\Api\BarangController as Barang; 
+use App\Http\Controllers\Api\FollowController;
 use App\Http\Controllers\Api\KategoriController as kategori; 
+use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\PeminjamanController;
 use App\Http\Controllers\Api\PeminjamanUangController;
 use App\Http\Controllers\Api\UserController;
@@ -51,13 +54,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/peminjaman-uang/{id}/aktifkan', [PeminjamanUangController::class, 'aktifkan']);
     Route::patch('/peminjaman-uang/{id}/lunas', [PeminjamanUangController::class, 'lunas']);
     
-    Route::post('/bantuan', [BantuanController::class, 'store']);
+    Route::get('/Bantuan', [BantuanController::class, 'index']);
+    Route::post('/Bantuan', [BantuanController::class, 'store']);
+    Route::patch('/Bantuan/{id}/respond', [BantuanController::class, 'respond']);
+    
+    // Fitur Teman (Follow)
+    Route::get('/friends', [FollowController::class, 'myFriends']);
+    Route::post('/users/{id}/follow', [FollowController::class, 'follow']);
+    Route::delete('/users/{id}/unfollow', [FollowController::class, 'unfollow']);
+
+    // Bank User
+    Route::get('/banks', [BankController::class, 'index']);
+    Route::post('/banks', [BankController::class, 'store']);
+    Route::post('/banks/{id}/topup', [BankController::class, 'topUp']);
+    Route::delete('/banks/{id}', [BankController::class, 'destroy']);
+
+    // Laporan User
+    Route::post('/laporan', [LaporanController::class, 'store']);
+    Route::get('/laporan/my-reports', [LaporanController::class, 'myReports']);
     
      Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::get('/bantuan', [BantuanController::class, 'index']); // Admin lihat request
-        Route::patch('/bantuan/{id}/process', [BantuanController::class, 'process']); // Admin proses   
         
         Route::delete('/barangs/{id}/force-delete', [Barang::class, 'forceDelete']);
         Route::patch('/peminjaman/{id}/batalkan', [PeminjamanController::class, 'adminBatalkan']);
+
+        Route::get('/laporan', [LaporanController::class, 'index']);
+        Route::patch('/laporan/{id}/process', [LaporanController::class, 'process']);
     });
 });
