@@ -1,46 +1,10 @@
 <template>
   <div class="home-container">
-    <aside class="sidebar">
-      <div class="logo">
-        <router-link to="/">
-          <h2>JaMan</h2>
-        </router-link>
-      </div>
-      <nav class="nav-menu">
-        <a href="#" class="nav-item active">Dashboard</a>
-        <router-link to="/pinjaman_saya" class="nav-item">Pinjaman Saya</router-link>
-        <router-link to="/barang" class="nav-item">Barang</router-link>
-        <router-link to="/kategori" class="nav-item">Kategori</router-link>
-      </nav>
-      
-      
-    </aside>
+    <sidebarUser />
 
     <main class="main-content">
       <header class="topbar">
-        <div class="user-profile">
-          <span class="notification-icon">🔔</span>
-
-          <div class="profile-dropdown" ref="dropdownRef">
-            <div class="profile-trigger" @click="isDropdownOpen = !isDropdownOpen">
-              <img src="https://via.placeholder.com/40" alt="Avatar" class="avatar" />
-              <span>{{ userName }}</span>
-              <i class="bi bi-chevron-down dropdown-caret" :class="{ open: isDropdownOpen }"></i>
-            </div>
-
-            <div v-if="isDropdownOpen" class="dropdown-menu">
-              <div class="dropdown-header">
-                <p class="dropdown-name">{{ userName }}</p>
-                <p class="dropdown-email">{{ userEmail }}</p>
-              </div>
-              <hr class="dropdown-divider" />
-              <button class="dropdown-item dropdown-logout" @click="handleLogout" :disabled="loggingOut">
-                <i class="bi bi-box-arrow-right"></i>
-                {{ loggingOut ? 'Keluar...' : 'Logout' }}
-              </button>
-            </div>
-          </div>
-        </div>
+        <topbarUser />
       </header>
 
       <section class="summary-cards">
@@ -98,8 +62,14 @@
 import { logout } from '../utils/auth';
 import { getPeminjaman } from '../utils/peminjaman';
 import { getPeminjamanUang } from '../utils/peminjamanUang';
+import SidebarUser from '@/components/sidebarUser.vue';
+import TopbarUser from '@/components/topbarUser.vue';
 
 export default {
+  components: {
+    SidebarUser,
+    TopbarUser
+  },
   name: 'DashboardView',
   data() {
     return {

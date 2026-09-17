@@ -56,5 +56,18 @@ export default {
     // Admin: Ambil semua barang di sistem (panggil endpoint biasa, backend otomatis tahu kalau admin yang request)
     getAllBarangs() {
         return api.get('/barang');
+    },
+    getUserBantuan() {
+        return api.get('/bantuan/my-requests');
+    },
+
+    // User biasa: Hapus bantuannya sendiri
+    deleteBantuan(id) {
+        return api.delete(`/bantuan/${id}`);
+    },
+
+    // User biasa: Ajukan bantuan ke admin
+    ajukanBantuan(data) {
+        return api.post('/bantuan', data);
     }
 };
