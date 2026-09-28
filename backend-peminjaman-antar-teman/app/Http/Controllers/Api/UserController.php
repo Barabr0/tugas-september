@@ -10,27 +10,21 @@ use Exception;
 class UserController extends Controller
 {
     public function index(Request $request)
-{
-    try {
-        $query = User::query();
+    {
+        try {
+            // Ambil semua user KECUALI yang sedang login
+            $users = User::where('id', '!=', $request->user()->id)->get();
 
-        // JIKA YANG LOGIN BUKAN ADMIN, HANYA TAMPILKAN USER LAIN (TEMAN)
-        if ($request->user()->role !== 'admin') {
-            $query->where('id', '!=', $request->user()->id);
+            return response()->json([
+                'status' => true,
+                'message' => 'Data user berhasil diambil',
+                'data' => $users
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $users = $query->get();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Data user berhasil diambil',
-            'data' => $users
-        ], 200);
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => 'false',
-            'message' => $e->getMessage()
-        ], 500);
     }
-}
 }

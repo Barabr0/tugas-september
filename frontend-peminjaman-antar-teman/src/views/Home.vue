@@ -148,6 +148,7 @@
     </footer>
   </div>
 </template>
+
 <script>
 export default {
   name: 'LandingView',
@@ -205,8 +206,7 @@ export default {
   },
   methods: {
     login() {
-      console.log('Tombol diklik!');
-      this.$router.push('/Login');
+      this.$router.push('/login');
     },
     formatRupiah(val) {
       return val.toLocaleString('id-ID');
