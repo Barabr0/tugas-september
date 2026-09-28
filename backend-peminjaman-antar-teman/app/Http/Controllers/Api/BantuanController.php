@@ -10,7 +10,6 @@ use Illuminate\Validation\ValidationException;
 
 class BantuanController extends Controller
 {
-    // User membuat request ke teman
     public function store(Request $request)
     {
         try {
@@ -48,25 +47,31 @@ class BantuanController extends Controller
         }
     }
 
-    // User melihat request yang dia buat dan request yang masuk ke dia
     public function index(Request $request)
     {
-        $userId = $request->user()->id;
-        
-        // Ambil request yang kita buat DAN request yang ditujukan ke kita
-        $requests = BantuanRequest::with(['peminta', 'target'])
-            ->where('peminta_id', $userId)
-            ->orWhere('target_id', $userId)
-            ->latest()
-            ->get();
+        try {
+            $userId = $request->user()->id;
 
-        return response()->json([
-            'status' => true,
-            'data' => $requests
-        ], 200);
+            $requests = BantuanRequest::with(['peminta', 'target'])
+                ->where(function ($query) use ($userId) {
+                    $query->where('peminta_id', $userId)
+                          ->orWhere('target_id', $userId);
+                })
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $requests
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // User menyetujui/menolak request dari teman
     public function respond(Request $request, $id)
     {
         try {
@@ -77,7 +82,6 @@ class BantuanController extends Controller
 
             $userRequest = BantuanRequest::findOrFail($id);
 
-            // Pastikan hanya target user yang bisa merespons
             if ($userRequest->target_id !== $request->user()->id) {
                 return response()->json([
                     'status' => false,
@@ -104,6 +108,32 @@ class BantuanController extends Controller
                 'status' => false,
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        try {
+            $userRequest = BantuanRequest::find($id);
+
+            if (!$userRequest) {
+                return response()->json(['status' => false, 'message' => 'Data tidak ditemukan'], 404);
+            }
+
+            if ($userRequest->peminta_id !== $request->user()->id) {
+                return response()->json(['status' => false, 'message' => 'Anda tidak berhak menghapus ini.'], 403);
+            }
+
+            if ($userRequest->status !== 'pending') {
+                return response()->json(['status' => false, 'message' => 'Hanya request yang masih menunggu yang bisa dibatalkan.'], 409);
+            }
+
+            $userRequest->delete();
+
+            return response()->json(['status' => true, 'message' => 'Permintaan berhasil dibatalkan'], 200);
+
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Kategori;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Exception;
 
@@ -34,6 +35,8 @@ class KategoriController extends Controller
             $validated = $request->validate([
                 'nama_kategori' => 'required|string|max:255|unique:kategoris,nama_kategori'
             ]);
+
+            $validated['slug'] = Str::slug($validated['nama_kategori']);
 
             $kategori = Kategori::create($validated);
 
@@ -73,6 +76,10 @@ class KategoriController extends Controller
                 'nama_kategori' => 'sometimes|required|string|max:255|unique:kategoris,nama_kategori,' . $id
             ]);
 
+            if (isset($validated['nama_kategori'])) {
+                $validated['slug'] = Str::slug($validated['nama_kategori']);
+            }
+
             $kategori->update($validated);
 
             return response()->json([
@@ -105,6 +112,15 @@ class KategoriController extends Controller
                     'status' => false,
                     'message' => 'Kategori tidak ditemukan'
                 ], 404);
+            }
+
+            $masihDipakai = $kategori->barangs()->exists();
+
+            if ($masihDipakai) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Kategori tidak dapat dihapus karena masih digunakan oleh barang.'
+                ], 409);
             }
 
             $kategori->delete();

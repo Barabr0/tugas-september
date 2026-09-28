@@ -7,9 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class BantuanRequest extends Model
 {
     protected $table = 'bantuan_requests';
-    protected $guarded = ['id'];
+   protected $fillable = [
+        'peminta_id',
+        'target_id',
+        'tipe_request',
+        'deskripsi',
+        'status',
+        'alasan',
+    ];
 
-     public function peminta()
+    public function peminta()
     {
         return $this->belongsTo(User::class, 'peminta_id');
     }

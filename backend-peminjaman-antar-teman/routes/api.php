@@ -23,10 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users', [UserController::class, 'index']); // <--- TAMBAHAN INI
     
         //kategori
-    Route::get('/kategori', [kategori::class, 'index']);
-    Route::post('/kategori', [kategori::class, 'store']);
-    Route::put('/kategori/{id}', [kategori::class, 'update']);     
-    Route::delete('/kategori/{id}', [kategori::class, 'destroy']);
+   
         //Barang
     Route::get('/barang/tersedia', [Barang::class, 'getBarangTersedia']);
     Route::get('/barang', [Barang::class, 'index']);
@@ -54,9 +51,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/peminjaman-uang/{id}/aktifkan', [PeminjamanUangController::class, 'aktifkan']);
     Route::patch('/peminjaman-uang/{id}/lunas', [PeminjamanUangController::class, 'lunas']);
     
-    Route::get('/Bantuan', [BantuanController::class, 'index']);
-    Route::post('/Bantuan', [BantuanController::class, 'store']);
-    Route::patch('/Bantuan/{id}/respond', [BantuanController::class, 'respond']);
+    Route::get('/bantuan', [BantuanController::class, 'index']);
+    Route::post('/bantuan', [BantuanController::class, 'store']);
+    Route::patch('/bantuan/{id}/respond', [BantuanController::class, 'respond']);
+    Route::delete('/bantuan/{id}', [BantuanController::class, 'destroy']);
     
     // Fitur Teman (Follow)
     Route::get('/friends', [FollowController::class, 'myFriends']);
@@ -68,17 +66,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/banks', [BankController::class, 'store']);
     Route::post('/banks/{id}/topup', [BankController::class, 'topUp']);
     Route::delete('/banks/{id}', [BankController::class, 'destroy']);
-
+    
     // Laporan User
     Route::post('/laporan', [LaporanController::class, 'store']);
     Route::get('/laporan/my-reports', [LaporanController::class, 'myReports']);
+
     
-     Route::middleware('role:admin')->prefix('admin')->group(function () {
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
+        
+        Route::get('/kategori', [kategori::class, 'index']);
+        Route::post('/kategori', [kategori::class, 'store']);
+        Route::put('/kategori/{id}', [kategori::class, 'update']);     
+        Route::delete('/kategori/{id}', [kategori::class, 'destroy']);
         
         Route::delete('/barangs/{id}/force-delete', [Barang::class, 'forceDelete']);
         Route::patch('/peminjaman/{id}/batalkan', [PeminjamanController::class, 'adminBatalkan']);
 
         Route::get('/laporan', [LaporanController::class, 'index']);
         Route::patch('/laporan/{id}/process', [LaporanController::class, 'process']);
+
+         Route::get('/bantuan', [BantuanController::class, 'indexAdmin']);
+        Route::patch('/bantuan/{id}/respond', [BantuanController::class, 'respond']);
     });
 });
