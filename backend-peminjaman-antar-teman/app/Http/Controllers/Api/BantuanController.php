@@ -8,7 +8,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
-class BantuanRequestController extends Controller
+class BantuanController extends Controller
 {
     // User membuat request ke teman
     public function store(Request $request)
