@@ -1,19 +1,8 @@
 <template>
   <div class="app-layout">
-    <!-- 1. Sidebar Navigasi User -->
     <sidebarUser />
 
-    <!-- 2. Area Konten Utama -->
     <main class="main-content">
-      <!-- Topbar Header dengan Profil di Pojok Kanan Atas -->
-      <!-- <TopbarUser 
-        title="Permintaan Bantuan Saya" 
-        subtitle="Kelola dan pantau status permohonan bantuan Anda."
-        :showBackButton="true"
-        backUrl="/dashboard"
-      /> -->
-
-      <!-- Main Card / Table Wrapper -->
       <div class="card-section">
         <div class="section-header">
           <div class="title-info">
@@ -30,15 +19,14 @@
             <thead>
               <tr>
                 <th style="width: 60px;" class="text-center">No</th>
+                <th style="width: 150px;">Ditujukan Ke</th>
                 <th style="width: 160px;">Tipe Bantuan</th>
-                <th style="width: 180px;">Aksi Diminta</th>
-                <th>Alasan / Deskripsi</th>
+                <th>Deskripsi</th>
                 <th style="width: 130px;" class="text-center">Status</th>
                 <th style="width: 100px;" class="text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              <!-- State Loading -->
               <tr v-if="loading">
                 <td colspan="6" class="empty-state">
                   <i class="bi bi-arrow-repeat spin"></i>
@@ -46,7 +34,6 @@
                 </td>
               </tr>
 
-              <!-- State Kosong -->
               <tr v-else-if="requests.length === 0">
                 <td colspan="6" class="empty-state">
                   <i class="bi bi-inbox"></i>
@@ -54,14 +41,13 @@
                 </td>
               </tr>
 
-              <!-- Data Loop -->
               <tr v-for="(item, index) in requests" :key="item.id" v-else>
                 <td class="text-center id-col">#{{ index + 1 }}</td>
+                <td class="fw-bold text-navy">{{ item.target?.name || '-' }}</td>
                 <td>
                   <span class="tag-type">{{ item.tipe_request }}</span>
                 </td>
-                <td class="fw-bold text-navy">{{ item.aksi_diminta }}</td>
-                <td class="desc-col">{{ item.alasan }}</td>
+                <td class="desc-col">{{ item.deskripsi }}</td>
                 <td class="text-center">
                   <span :class="['tag-status', statusClass(item.status)]">
                     {{ mapStatus(item.status) }}
@@ -69,17 +55,17 @@
                 </td>
                 <td class="action-col">
                   <div class="action-buttons">
-                    <button 
-                      v-if="item.status === 'pending'" 
-                      class="btn-icon delete" 
+                    <button
+                      v-if="item.status === 'pending'"
+                      class="btn-icon delete"
                       title="Batalkan Permintaan"
                       @click="cancelRequest(item.id)"
                     >
                       <i class="bi bi-trash-fill"></i>
                     </button>
-                    <button 
-                      v-else 
-                      class="btn-icon view" 
+                    <button
+                      v-else
+                      class="btn-icon view"
                       title="Lihat Detail"
                       @click="viewDetail(item)"
                     >
@@ -94,15 +80,22 @@
       </div>
     </main>
 
-    <!-- Modal Ajukan Bantuan Baru -->
     <div v-if="showModal" class="modal-overlay">
       <div class="form-card modal-content">
         <div class="form-header">
           <h2>Ajukan Bantuan Baru</h2>
-          <p>Sampaikan kendala atau permohonan aksi kepada tim admin.</p>
+          <p>Sampaikan kendala atau permohonan aksi kepada teman.</p>
         </div>
 
         <form @submit.prevent="submitRequest" class="form-body">
+          <div class="form-group">
+            <label>Ditujukan Kepada</label>
+            <select v-model="form.target_id" required class="input-select">
+              <option value="" disabled>Pilih teman</option>
+              <option v-for="u in daftarUser" :key="u.id" :value="u.id">{{ u.name }}</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>Tipe Bantuan</label>
             <select v-model="form.tipe_request" required class="input-select">
@@ -115,23 +108,12 @@
           </div>
 
           <div class="form-group">
-            <label>Aksi yang Diminta</label>
-            <input 
-              v-model="form.aksi_diminta" 
-              type="text" 
-              placeholder="Contoh: Pembatalan Pinjaman, Reset Reputasi" 
-              required 
-              class="input-control" 
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Alasan Lengkap</label>
-            <textarea 
-              v-model="form.alasan" 
-              rows="3" 
-              placeholder="Jelaskan kronologi atau alasan secara detail..." 
-              required 
+            <label>Deskripsi</label>
+            <textarea
+              v-model="form.deskripsi"
+              rows="3"
+              placeholder="Jelaskan kronologi atau alasan secara detail..."
+              required
               class="input-control"
             ></textarea>
           </div>
@@ -149,14 +131,13 @@
 </template>
 
 <script>
-import adminApi from '@/utils/admin';
+import bantuanApi from '@/utils/bantuan';
+import { getUsers } from '@/utils/user';
 import sidebarUser from '@/components/sidebarUser.vue';
-//import TopbarUser from '@/components/TopbarUser.vue';
 
 export default {
   components: {
-    sidebarUser,
-    
+    sidebarUser
   },
   name: 'UserPermintaanBantuanView',
   data() {
@@ -165,21 +146,23 @@ export default {
       showModal: false,
       submitting: false,
       form: {
+        target_id: '',
         tipe_request: '',
-        aksi_diminta: '',
-        alasan: ''
+        deskripsi: ''
       },
-      requests: []
+      requests: [],
+      daftarUser: []
     };
   },
-  mounted() {
-    this.fetchRequests();
+  async mounted() {
+    await this.fetchRequests();
+    await this.fetchUsers();
   },
   methods: {
     async fetchRequests() {
       this.loading = true;
       try {
-        const response = await adminApi.getUserBantuan();
+        const response = await bantuanApi.getAll();
         this.requests = response.data.data || response.data || [];
       } catch (error) {
         console.error('Gagal memuat data bantuan:', error);
@@ -188,25 +171,32 @@ export default {
         this.loading = false;
       }
     },
+    async fetchUsers() {
+      try {
+        const response = await getUsers();
+        this.daftarUser = response.data.data || response.data || [];
+      } catch (error) {
+        console.error('Gagal memuat daftar teman:', error);
+      }
+    },
     mapStatus(status) {
       const map = {
         pending: 'Menunggu',
-        processed: 'Selesai',
-        rejected: 'Ditolak'
+        disetujui: 'Disetujui',
+        ditolak: 'Ditolak'
       };
       return map[status] || status;
     },
     statusClass(status) {
-      const mapped = this.mapStatus(status);
       const map = {
-        'Menunggu': 'menunggu',
-        'Selesai': 'selesai',
-        'Ditolak': 'ditolak'
+        pending: 'menunggu',
+        disetujui: 'selesai',
+        ditolak: 'ditolak'
       };
-      return map[mapped] || '';
+      return map[status] || '';
     },
     openAddModal() {
-      this.form = { tipe_request: '', aksi_diminta: '', alasan: '' };
+      this.form = { target_id: '', tipe_request: '', deskripsi: '' };
       this.showModal = true;
     },
     closeModal() {
@@ -215,8 +205,8 @@ export default {
     async submitRequest() {
       this.submitting = true;
       try {
-        await adminApi.ajukanBantuan(this.form);
-        if (this.$toast) this.$toast.success('Permintaan bantuan berhasil dikirim ke admin.');
+        await bantuanApi.ajukan(this.form);
+        if (this.$toast) this.$toast.success('Permintaan bantuan berhasil dikirim.');
         this.closeModal();
         this.fetchRequests();
       } catch (error) {
@@ -229,26 +219,25 @@ export default {
     },
     async cancelRequest(id) {
       if (!confirm('Apakah Anda yakin ingin membatalkan/menghapus permintaan ini?')) return;
-      
       try {
-        await adminApi.deleteBantuan(id);
+        await bantuanApi.delete(id);
         this.requests = this.requests.filter(r => r.id !== id);
         if (this.$toast) this.$toast.success('Permintaan berhasil dihapus.');
       } catch (error) {
         console.error('Gagal menghapus bantuan:', error);
-        if (this.$toast) this.$toast.error('Gagal menghapus permintaan.');
+        const pesan = error.response?.data?.message || 'Gagal menghapus permintaan.';
+        if (this.$toast) this.$toast.error(pesan);
       }
     },
     viewDetail(item) {
       const statusText = this.mapStatus(item.status);
-      alert(`Status Permintaan: ${statusText}\nAlasan: ${item.alasan}`);
+      alert(`Ditujukan ke: ${item.target?.name}\nStatus: ${statusText}\nDeskripsi: ${item.deskripsi}`);
     }
   }
 };
 </script>
 
 <style scoped>
-/* Main Full Layout */
 .app-layout {
   display: flex;
   min-height: 100vh;
@@ -263,7 +252,6 @@ export default {
   overflow-y: auto;
 }
 
-/* Card Section */
 .card-section {
   background: #ffffff;
   border-radius: 16px;
@@ -321,7 +309,6 @@ export default {
   background-color: #E07300;
 }
 
-/* Table Design */
 .table-wrapper {
   overflow-x: auto;
 }
@@ -436,7 +423,6 @@ export default {
   margin-bottom: 8px;
 }
 
-/* Modal Styling */
 .modal-overlay {
   position: fixed;
   inset: 0;
