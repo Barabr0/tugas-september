@@ -61,4 +61,46 @@ class User extends Authenticatable
         {
             return $this->hasMany(Peminjaman::class, 'pemilik_id');
         }
+        public function pinjamanUangSebagaiPemberi()
+        {
+            return $this->hasMany(PeminjamanUang::class, 'pemberi_id');
+        }
+
+        public function pinjamanUangSebagaiPeminjam()
+        {
+            return $this->hasMany(PeminjamanUang::class, 'peminjam_id');
+        }
+            public function banks()
+        {
+            return $this->belongsToMany(Bank::class, 'bank_user')
+                        ->withPivot('saldo', 'jumlah_topup') // Bawa kolom saldo dari pivot
+                        ->withTimestamps();
+        }
+        /**
+         * Relasi ke Laporan
+         */
+        public function laporans()
+        {
+            return $this->hasMany(Laporan::class);
+        }
+        // User yang follow saya
+        public function followers()
+        {
+            return $this->belongsToMany(User::class, 'follows', 'following_id', 'follower_id')->withTimestamps();
+        }
+
+        // TAMBAHKAN INI: User yang saya follow (teman saya)
+        public function followings()
+        {
+            return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')->withTimestamps();
+        }
+        public function requestsDibuat()
+        {
+            return $this->hasMany(BantuanRequest::class, 'peminta_id');
+        }
+
+        public function requestsDiterima()
+        {
+            return $this->hasMany(BantuanRequest::class, 'target_id');
+        }
 }

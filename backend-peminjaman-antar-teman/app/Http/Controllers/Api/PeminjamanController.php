@@ -76,84 +76,60 @@ class PeminjamanController extends Controller
     }
 
     public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'barang_ids' => 'required|array|min:1',
-                'barang_ids.*' => 'required|exists:barangs,id',
-                'tgl_pinjam' => 'required|date',
-                'tgl_tenggat' => 'required|date|after_or_equal:tgl_pinjam',
-            ]);
+{
+    try {
+        // 1. Validasi: barang_ids HARUS array dan minimal isinya 1
+        $validated = $request->validate([
+            'barang_ids' => 'required|array|min:1',
+            'barang_ids.*' => 'exists:barangs,id', // Pastikan semua ID barang ada di DB
+            'tgl_pinjam' => 'required|date',
+            'tgl_tenggat' => 'required|date|after_or_equal:tgl_pinjam',
+        ]);
 
-            $barangs = Barang::whereIn('id', $validated['barang_ids'])->get();
+       // Ambil barang pertama untuk menentukan siapa pemiliknya
+        $barangPertama = Barang::find($validated['barang_ids'][0]);
+        $pemilikId = $barangPertama->user_id;
 
-            $tidakTersedia = $barangs->where('status', '!=', 'T');
-            if ($tidakTersedia->isNotEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Ada barang yang sedang tidak tersedia'
-                ], 409);
-            }
-
-            $pemilikUnik = $barangs->pluck('user_id')->unique();
-            if ($pemilikUnik->count() > 1) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Barang harus dari pemilik yang sama'
-                ], 422);
-            }
-            $pemilikId = $pemilikUnik->first();
-
-            if ($pemilikId === $request->user()->id) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Tidak bisa pinjam barang sendiri'
-                ], 422);
-            }
-
-            // Bungkus dengan transaction: kalau salah satu proses gagal,
-            // semua dibatalkan (tidak ada data nyangkut setengah jadi)
-            $peminjaman = DB::transaction(function () use ($validated, $pemilikId, $request) {
-                $peminjaman = Peminjaman::create([
-                    'peminjam_id' => $request->user()->id,
-                    'pemilik_id' => $pemilikId,
-                    'tgl_pinjam' => $validated['tgl_pinjam'],
-                    'tgl_tenggat' => $validated['tgl_tenggat'],
-                    'status' => 'M',
-                ]);
-
-                $peminjaman->barangs()->attach($validated['barang_ids']);
-
-                Notifikasi::create([
-                    'user_id' => $pemilikId,
-                    'peminjaman_id' => $peminjaman->id,
-                    'judul' => 'Pengajuan Peminjaman Baru',
-                    'pesan' => $request->user()->name . ' mengajukan pinjam barang Anda.',
-                ]);
-
-                return $peminjaman;
-            });
-
-            $peminjaman->load(['barangs', 'peminjam', 'pemilik']);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Pengajuan berhasil dibuat',
-                'data' => $peminjaman
-            ], 201);
-
-        } catch (ValidationException $e) {
+        // CEK RELASI TEMAN: Apakah user yang login sudah follow pemilik barang ini?
+        $isFollowing = $request->user()->followings()->where('following_id', $pemilikId)->exists();
+        if (!$isFollowing) {
             return response()->json([
                 'status' => false,
-                'errors' => $e->errors()
-            ], 422);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => 'Gagal! Anda hanya bisa meminjam barang dari teman yang sudah Anda ikuti (follow).'
+            ], 403);
         }
+        // 2. Buat data di tabel peminjamen (1 baris peminjaman)
+        $peminjaman = Peminjaman::create([
+            'peminjam_id' => $request->user()->id,
+            'pemilik_id' => $pemilikId,
+            'tgl_pinjam' => $validated['tgl_pinjam'],
+            'tgl_tenggat' => $validated['tgl_tenggat'],
+            'status' => 'M' // Status Menunggu
+        ]);
+
+        // 3. Attach BANYANG barang ke tabel pivot menggunakan array ID
+        // fungsi attach() otomatis bisa menerima array
+        $peminjaman->barangs()->attach($validated['barang_ids']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pengajuan peminjaman barang berhasil dibuat',
+            'data' => $peminjaman
+        ], 201);
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validasi gagal.',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function setujui(Request $request, string $id)
     {
