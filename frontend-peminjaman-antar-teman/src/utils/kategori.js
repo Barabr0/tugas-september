@@ -2,7 +2,7 @@ import api from './api';
 
 export default {
     getAll() {
-        return api.get('/admin/kategori');
+        return api.get('/kategori');
     },
     
     addKategori(data) {

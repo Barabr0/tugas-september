@@ -24,7 +24,6 @@
           </select>
         </div>
 
-        <!-- FORM JIKA MEMINJAM UANG -->
         <div class="form-group" v-if="form.type === 'uang'">
           <label for="nominal">Nominal (Rp)</label>
           <input
@@ -37,24 +36,26 @@
             class="input-control"
           />
         </div>
-        
-        <!-- FORM JIKA MEMINJAM BARANG -->
+
         <div class="form-group" v-else>
           <label for="barang">Pilih Barang</label>
-          <select 
-            id="barang" 
-            v-model="form.barangId" 
-            class="input-control" 
-            required 
+          <select
+            id="barang"
+            v-model="form.barangId"
+            class="input-control"
+            required
             :disabled="!form.temanId"
           >
             <option value="" disabled>
               {{ form.temanId ? 'Pilih barang' : 'Pilih teman dulu' }}
             </option>
-            <option v-for="b in barangTersediaUntukTeman" :key="b.id" :value="b.id">
+            <option v-for="b in daftarBarang" :key="b.id" :value="b.id">
               {{ b.nama_barang }}
             </option>
           </select>
+          <small v-if="form.temanId && daftarBarang.length === 0" class="hint">
+            Teman ini belum punya barang yang tersedia.
+          </small>
         </div>
 
         <div class="form-group">
@@ -83,7 +84,7 @@
 import { getUsers } from '../../utils/user';
 import { ajukanPinjamUang } from '../../utils/peminjamanUang';
 import { ajukanPinjamBarang } from '../../utils/peminjaman';
-import barangApi from '../../utils/barang'; // Import dari barang.js
+import barangApi from '../../utils/barang';
 
 export default {
   name: 'AddPinjaman',
@@ -101,40 +102,38 @@ export default {
       loading: false
     };
   },
-  computed: {
-    // Filter otomatis: Hanya tampilkan barang milik teman yang dipilih
-    barangTersediaUntukTeman() {
-      if (!this.form.temanId) return [];
-      return this.daftarBarang.filter(b => b.user_id === this.form.temanId);
-    }
-  },
   watch: {
-    // Reset pilihan barang jika ganti teman
-    'form.temanId'() {
+    async 'form.temanId'(newVal) {
       this.form.barangId = '';
+      this.daftarBarang = [];
+
+      if (!newVal) return;
+
+      try {
+        const resBarang = await barangApi.getBarangTersedia(newVal);
+        this.daftarBarang = resBarang.data.data || resBarang.data || [];
+      } catch (e) {
+        console.error('Gagal memuat barang milik teman ini', e);
+      }
     }
   },
- async mounted() {
+  async mounted() {
     try {
       const resUser = await getUsers();
       this.daftarUser = resUser.data.data || resUser.data || [];
-
-      // AMBIL DARI barangApi
-      const resBarang = await barangApi.getBarangTersedia(); 
-      this.daftarBarang = resBarang.data.data || resBarang.data || [];
     } catch (e) {
-      console.error('Gagal memuat data awal', e);
-      this.$toast.error('Gagal memuat data');
+      console.error('Gagal memuat daftar user', e);
+      if (this.$toast) this.$toast.error('Gagal memuat data teman');
     }
   },
   methods: {
     async saveTransaction() {
       if (!this.form.temanId) {
-        this.$toast.error('Pilih teman terlebih dahulu.');
+        if (this.$toast) this.$toast.error('Pilih teman terlebih dahulu.');
         return;
       }
       if (!this.form.dueDate) {
-        this.$toast.error('Tanggal wajib diisi.');
+        if (this.$toast) this.$toast.error('Tanggal wajib diisi.');
         return;
       }
 
@@ -144,27 +143,25 @@ export default {
       try {
         if (this.form.type === 'uang') {
           if (!this.form.nominal || this.form.nominal <= 0) {
-            this.$toast.error('Nominal wajib diisi.');
+            if (this.$toast) this.$toast.error('Nominal wajib diisi.');
             this.loading = false;
             return;
           }
 
-          // Kirim request pinjam uang
           await ajukanPinjamUang({
             teman_id: this.form.temanId,
-            arah: 'hutang', // Karena kita yang meminjam
+            arah: 'hutang',
             nominal: this.form.nominal,
             tgl_pinjam: hariIni,
             tgl_tenggat: this.form.dueDate,
           });
         } else {
           if (!this.form.barangId) {
-            this.$toast.error('Pilih barang terlebih dahulu.');
+            if (this.$toast) this.$toast.error('Pilih barang terlebih dahulu.');
             this.loading = false;
             return;
           }
 
-          // Kirim request pinjam barang
           await ajukanPinjamBarang({
             barang_ids: [this.form.barangId],
             tgl_pinjam: hariIni,
@@ -172,18 +169,18 @@ export default {
           });
         }
 
-        this.$toast.success('Berhasil mengajukan pinjaman!');
+        if (this.$toast) this.$toast.success('Berhasil mengajukan pinjaman!');
         this.$router.push('/dashboard');
 
       } catch (error) {
         const pesan = error.response?.data?.message || 'Gagal menyimpan transaksi.';
-        this.$toast.error(pesan);
+        if (this.$toast) this.$toast.error(pesan);
       } finally {
         this.loading = false;
       }
     },
     cancel() {
-      this.$router.push('/dashboard');
+      this.$router.push('/pinjaman_saya');
     }
   }
 };
@@ -253,6 +250,17 @@ export default {
 
 .input-control:focus, .input-select:focus {
   border-color: #003049;
+}
+
+.input-control:disabled {
+  background-color: #F7FAFC;
+  cursor: not-allowed;
+}
+
+.hint {
+  font-size: 11px;
+  color: #A0AEC0;
+  margin-top: 4px;
 }
 
 .form-actions {

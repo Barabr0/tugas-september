@@ -10,6 +10,10 @@ use Illuminate\Validation\ValidationException;
 
 class BantuanController extends Controller
 {
+    // ==========================
+    // USER
+    // ==========================
+
     public function store(Request $request)
     {
         try {
@@ -72,6 +76,7 @@ class BantuanController extends Controller
         }
     }
 
+    // Target user merespons request (setujui / tolak)
     public function respond(Request $request, $id)
     {
         try {
@@ -132,6 +137,61 @@ class BantuanController extends Controller
 
             return response()->json(['status' => true, 'message' => 'Permintaan berhasil dibatalkan'], 200);
 
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ==========================
+    // ADMIN
+    // ==========================
+
+    // Lihat semua request (opsional filter ?status=pending)
+    public function indexAdmin(Request $request)
+    {
+        try {
+            $query = BantuanRequest::with([
+                'peminta:id,name,email',
+                'target:id,name,email',
+            ])->latest();
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $query->get()
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // Admin setujui / tolak tanpa cek target_id
+    public function adminRespond(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'status' => 'required|in:disetujui,ditolak',
+                'alasan' => 'nullable|string',
+            ]);
+
+            $userRequest = BantuanRequest::findOrFail($id);
+            $userRequest->update($validated);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Request berhasil diproses admin.',
+                'data' => $userRequest->load(['peminta', 'target'])
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors()
+            ], 422);
         } catch (Exception $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
         }

@@ -83,17 +83,26 @@ class User extends Authenticatable
         {
             return $this->hasMany(Laporan::class);
         }
-        // User yang follow saya
-        public function followers()
-        {
-            return $this->belongsToMany(User::class, 'follows', 'following_id', 'follower_id')->withTimestamps();
-        }
-
-        // TAMBAHKAN INI: User yang saya follow (teman saya)
         public function followings()
-        {
-            return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')->withTimestamps();
-        }
+    {
+        return $this->belongsToMany(
+            User::class,
+            'follows',
+            'follower_id',
+            'following_id'
+        )->withTimestamps();
+    }
+
+    // Orang-orang yang FOLLOW saya
+    public function followers()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'follows',
+            'following_id',
+            'follower_id'
+        )->withTimestamps();
+    }
         public function requestsDibuat()
         {
             return $this->hasMany(BantuanRequest::class, 'peminta_id');

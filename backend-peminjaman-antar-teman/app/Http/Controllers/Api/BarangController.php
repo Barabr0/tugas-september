@@ -11,41 +11,48 @@ use Exception;
 class BarangController extends Controller
 {
     public function index(Request $request)
+{
+    try {
+        $query = Barang::with(['pemilik', 'kategori'])
+            ->where('status', 'T');
+
+        if ($request->user()->role === 'admin') {
+            // admin lihat semua barang
+        } else {
+            $query->where('user_id', $request->user()->id);
+        }
+
+        $barang = $query->oldest()->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data berhasil diambil',
+            'data' => $barang
+        ], 200);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
+    // Dipakai untuk form pinjaman - lihat barang milik teman tertentu
+    public function getBarangTersedia(Request $request)
     {
         try {
-            $query = Barang::with(['pemilik', 'kategori'])->latest();
+            $query = Barang::with(['pemilik', 'kategori'])
+                ->where('status', 'T');
 
-            // Jika user biasa, hanya tampilkan barang miliknya. Admin lihat semua.
-            if ($request->user()->role !== 'admin') {
-                $query->where('user_id', $request->user()->id);
+            if ($request->has('user_id')) {
+                $query->where('user_id', $request->user_id);
             }
 
-            $barang = $query->get();
+            $barang = $query->latest()->get();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Data berhasil diambil',
-                'data' => $barang
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-   // TAMBAHKAN FUNGSI INI
-    public function getBarangTersedia()
-    {
-        try {
-            $barang = Barang::with('pemilik')
-                ->where('status', 'T')
-                ->get();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Data barang tersedia berhasil diambil',
                 'data' => $barang
             ], 200);
         } catch (Exception $e) {
@@ -67,13 +74,9 @@ class BarangController extends Controller
             ]);
 
             $barang = Barang::create([
-                'kategori_id' => $validated['kategori_id'],
-                'nama_barang' => $validated['nama_barang'],
-                'deskripsi' => $validated['deskripsi'],
-                'kondisi' => $validated['kondisi'] ?? 'B',
+                ...$validated,
                 'user_id' => $request->user()->id,
             ]);
-            
             $barang->load(['pemilik', 'kategori']);
 
             return response()->json([
@@ -85,7 +88,6 @@ class BarangController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Validasi gagal.',
                 'errors' => $e->errors()
             ], 422);
         } catch (Exception $e) {
@@ -98,50 +100,37 @@ class BarangController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $barang = Barang::find($id);
-        
         try {
+            $barang = Barang::find($id);
+
             if (!$barang) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Data barang tidak ada'
-                ], 404);
+                return response()->json(['status' => false, 'message' => 'Data barang tidak ada'], 404);
             }
-            
+
             if ($barang->user_id !== $request->user()->id) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Anda tidak dapat mengubah data ini'
-                ], 403);
+                return response()->json(['status' => false, 'message' => 'Anda tidak berhak mengubah barang ini.'], 403);
             }
-            
+
             $validated = $request->validate([
                 'kategori_id' => 'sometimes|required|exists:kategoris,id',
                 'nama_barang' => 'sometimes|required|string|max:225',
                 'deskripsi' => 'sometimes|required|string',
                 'kondisi' => 'nullable|in:B,R,P',
             ]);
-            
+
             $barang->update($validated);
             $barang->load(['pemilik', 'kategori']);
 
             return response()->json([
                 'status' => true,
-                'message' => 'Data berhasil diedit',
+                'message' => 'Data berhasil diperbarui',
                 'data' => $barang
             ], 200);
-            
+
         } catch (ValidationException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Validasi gagal.',
-                'errors' => $e->errors()
-            ], 422);
+            return response()->json(['status' => false, 'errors' => $e->errors()], 422);
         } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -151,17 +140,11 @@ class BarangController extends Controller
             $barang = Barang::find($id);
 
             if (!$barang) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Data barang tidak ada'
-                ], 404);
+                return response()->json(['status' => false, 'message' => 'Data barang tidak ada'], 404);
             }
 
             if ($barang->user_id !== $request->user()->id) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Anda tidak berhak menghapus data ini'
-                ], 403);
+                return response()->json(['status' => false, 'message' => 'Anda tidak berhak menghapus data ini'], 403);
             }
 
             $adaTransaksiAktif = $barang->peminjaman()
@@ -177,16 +160,27 @@ class BarangController extends Controller
 
             $barang->delete();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Data berhasil dihapus'
-            ], 200);
+            return response()->json(['status' => true, 'message' => 'Data berhasil dihapus'], 200);
 
         } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function forceDelete(Request $request, string $id)
+    {
+        try {
+            $barang = Barang::find($id);
+
+            if (!$barang) {
+                return response()->json(['status' => false, 'message' => 'Data barang tidak ada'], 404);
+            }
+
+            $barang->delete();
+
+            return response()->json(['status' => true, 'message' => 'Barang berhasil dihapus paksa'], 200);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

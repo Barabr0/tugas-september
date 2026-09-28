@@ -22,17 +22,27 @@
         <i class="bi bi-box-seam-fill"></i>
         <span>Barang Saya</span>
       </router-link>
+      
+      <router-link to="/teman" class="menu-item" active-class="active">
+        <i class="bi bi-friend-seam-fill"></i>
+        <span>List Teman</span>
+      </router-link>
 
-      <router-link to="/kategori" class="menu-item" active-class="active">
-        <i class="bi bi-tags-fill"></i>
-        <span>Kategori Barang</span>
+      <router-link to="/bank" class="menu-item" active-class="active">
+        <i class="bi bi-bank-seam-fill"></i>
+        <span>Bank</span>
       </router-link>
 
       <div class="menu-label">BANTUAN</div>
 
       <router-link to="/bantuan" class="menu-item" active-class="active">
         <i class="bi bi-life-preserver"></i>
-        <span>Minta Bantuan</span>
+        <span>Laporan</span>
+      </router-link>
+
+      <router-link to="/laporan" class="menu-item" active-class="active">
+        <i class="bi bi-life-preserver"></i>
+        <span>Bantuan</span>
       </router-link>
     </nav>
   </aside>

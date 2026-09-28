@@ -6,11 +6,11 @@
       <div class="card-section">
         <div class="section-header">
           <div class="title-info">
-            <h3>Riwayat Permintaan</h3>
-            <span class="badge-count">{{ requests.length }} Permintaan</span>
+            <h3>Riwayat Laporan</h3>
+            <span class="badge-count">{{ requests.length }} Laporan</span>
           </div>
           <button class="btn-primary-add" @click="openAddModal">
-            <i class="bi bi-plus-lg"></i> Ajukan Bantuan
+            <i class="bi bi-plus-lg"></i> Ajukan Laporan
           </button>
         </div>
 
@@ -20,7 +20,7 @@
               <tr>
                 <th style="width: 60px;" class="text-center">No</th>
                 <th style="width: 150px;">Ditujukan Ke</th>
-                <th style="width: 160px;">Tipe Bantuan</th>
+                <th style="width: 160px;">Tipe Laporan</th>
                 <th>Deskripsi</th>
                 <th style="width: 130px;" class="text-center">Status</th>
                 <th style="width: 100px;" class="text-center">Aksi</th>
@@ -30,14 +30,14 @@
               <tr v-if="loading">
                 <td colspan="6" class="empty-state">
                   <i class="bi bi-arrow-repeat spin"></i>
-                  <p>Memuat riwayat bantuan Anda...</p>
+                  <p>Memuat riwayat Laporan Anda...</p>
                 </td>
               </tr>
 
               <tr v-else-if="requests.length === 0">
                 <td colspan="6" class="empty-state">
                   <i class="bi bi-inbox"></i>
-                  <p>Belum ada riwayat permintaan bantuan. Klik tombol di atas jika butuh bantuan.</p>
+                  <p>Belum ada riwayat Laporan bantuan. Klik tombol di atas jika butuh bantuan.</p>
                 </td>
               </tr>
 
@@ -58,7 +58,7 @@
                     <button
                       v-if="item.status === 'pending'"
                       class="btn-icon delete"
-                      title="Batalkan Permintaan"
+                      title="Batalkan laporan"
                       @click="cancelRequest(item.id)"
                     >
                       <i class="bi bi-trash-fill"></i>

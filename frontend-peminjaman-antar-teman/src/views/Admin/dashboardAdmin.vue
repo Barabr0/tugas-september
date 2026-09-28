@@ -1,11 +1,8 @@
 <template>
   <div class="admin-wrapper">
-    <!-- 1. Sidebar Admin -->
     <SidebarAdmin />
 
-    <!-- 2. Main Content Area -->
     <main class="main-content">
-      <!-- Top Header Nav -->
       <header class="topbar">
         <div class="topbar-left">
           <h1>Overview Sistem</h1>
@@ -50,50 +47,67 @@
           </div>
           <div class="stat-info">
             <span class="stat-title">Request Bantuan</span>
-            <h3 class="stat-value">{{ bantuanRequests.length }}</h3>
+            <h3 class="stat-value">{{ pendingCount }}</h3>
             <span class="stat-trend neutral">Menunggu review</span>
           </div>
         </div>
       </div>
 
-      <!-- Content Grid: Tabel Bantuan & Barang -->
       <div class="dashboard-grid">
-        <!-- Tabel Permintaan Bantuan User -->
+        <!-- Tabel Permintaan Bantuan -->
         <div class="card-section main-table-card">
           <div class="section-header">
             <div>
               <h3>Permintaan Bantuan User</h3>
-              <p>User yang meminta admin untuk edit/hapus/batalkan sesuatu.</p>
+              <p>Request bantuan antar user beserta alasan dan catatan responsnya.</p>
             </div>
+            <select v-model="filterStatus" @change="fetchBantuan" class="filter-select">
+              <option value="pending">Menunggu</option>
+              <option value="disetujui">Disetujui</option>
+              <option value="ditolak">Ditolak</option>
+              <option value="">Semua</option>
+            </select>
           </div>
 
           <div class="table-wrapper">
             <table class="custom-table">
               <thead>
                 <tr>
-                  <th>User</th>
+                  <th>Peminta</th>
+                  <th>Target</th>
                   <th>Tipe</th>
-                  <th>Aksi Diminta</th>
-                  <th>Alasan</th>
+                  <th>Alasan / Deskripsi</th>
+                  <th>Status</th>
+                  <th>Catatan Respons</th>
                   <th>Aksi Admin</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="loadingBantuan">
-                  <td colspan="5" class="empty-state">Memuat data bantuan...</td>
+                  <td colspan="7" class="empty-state">Memuat data bantuan...</td>
                 </tr>
                 <tr v-else-if="bantuanRequests.length === 0">
-                  <td colspan="5" class="empty-state">Tidak ada permintaan bantuan saat ini.</td>
+                  <td colspan="7" class="empty-state">Tidak ada permintaan bantuan.</td>
                 </tr>
                 <tr v-for="req in bantuanRequests" :key="req.id">
-                  <td class="fw-bold">{{ req.user?.name || 'Unknown' }}</td>
+                  <td class="fw-bold">{{ req.peminta_nama || req.peminta?.name || 'Unknown' }}</td>
+                  <td>{{ req.target_nama || req.target?.name || '-' }}</td>
                   <td>{{ req.tipe_request }}</td>
-                  <td><span class="tag-status menunggu">{{ req.aksi_diminta }}</span></td>
-                  <td style="max-width: 200px;">{{ req.alasan }}</td>
+                  <td class="text-cell">{{ req.deskripsi || '-' }}</td>
                   <td>
-                    <button @click="handleProcessBantuan(req.id)" class="btn-action btn-edit">
-                      Proses / Selesai
-                    </button>
+                    <span class="tag-status" :class="req.status">{{ req.status }}</span>
+                  </td>
+                  <td class="text-cell">{{ req.alasan || '-' }}</td>
+                  <td>
+                    <div v-if="req.status === 'pending'" class="action-cell">
+                      <button @click="handleRespondBantuan(req.id, 'disetujui')" class="btn-action btn-approve">
+                        Setujui
+                      </button>
+                      <button @click="handleRespondBantuan(req.id, 'ditolak')" class="btn-action btn-reject">
+                        Tolak
+                      </button>
+                    </div>
+                    <span v-else class="done-text">Selesai</span>
                   </td>
                 </tr>
               </tbody>
@@ -101,7 +115,7 @@
           </div>
         </div>
 
-        <!-- Quick System Status / Barang Sistem -->
+        <!-- Barang Sistem Terbaru -->
         <div class="card-section side-card">
           <div class="section-header">
             <h3>Barang Sistem Terbaru</h3>
@@ -128,114 +142,90 @@
 </template>
 
 <script>
-import api from '@/utils/api'; 
-import adminApi from '@/utils/admin'; 
+import adminApi from '@/utils/admin';
 import SidebarAdmin from '@/components/sidebarAdmin.vue';
 
 export default {
+  name: 'AdminDashboardView',
   components: {
     SidebarAdmin
   },
-  name: 'AdminDashboardView',
   data() {
     return {
-      // Tambahan untuk menyimpan data admin yang login
-      adminData: {
-        name: '',
-        email: ''
-      },
       users: [],
       barangs: [],
       bantuanRequests: [],
+      filterStatus: 'pending',
       loadingUsers: false,
       loadingBarangs: false,
       loadingBantuan: false
     };
   },
   computed: {
-    // Ambil huruf pertama untuk inisial avatar
-    userInitial() {
-      if (this.adminData.name) {
-        return this.adminData.name.charAt(0).toUpperCase();
-      }
-      return 'A'; // Default jika tidak ada nama
+    pendingCount() {
+      return this.bantuanRequests.filter(r => r.status === 'pending').length;
     }
   },
   mounted() {
-    this.loadAdminProfile(); // Panggil fungsi ambil profil
     this.fetchAdminData();
   },
   methods: {
-    loadAdminProfile() {
-      // Ambil data user dari localStorage (disimpan dalam bentuk string JSON saat login)
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          this.adminData = JSON.parse(userStr);
-        } catch (e) {
-          console.error('Gagal parse data user', e);
-        }
-      }
+    async fetchAdminData() {
+      await Promise.all([
+        this.fetchUsers(),
+        this.fetchBarangs(),
+        this.fetchBantuan()
+      ]);
     },
 
-    async fetchAdminData() {
+    async fetchUsers() {
       this.loadingUsers = true;
-      this.loadingBarangs = true;
-      this.loadingBantuan = true;
-
       try {
-        // Fetch Users
-        const resUsers = await adminApi.getAllUsers();
-        this.users = resUsers.data.data || resUsers.data || [];
+        const res = await adminApi.getAllUsers();
+        this.users = res.data.data || res.data || [];
       } catch (error) {
         console.error('Gagal ambil users', error);
       } finally {
         this.loadingUsers = false;
       }
+    },
 
+    async fetchBarangs() {
+      this.loadingBarangs = true;
       try {
-        // Fetch Barangs
-        const resBarangs = await adminApi.getAllBarangs();
-        this.barangs = resBarangs.data.data || resBarangs.data || [];
+        const res = await adminApi.getAllBarangs();
+        this.barangs = res.data.data || res.data || [];
       } catch (error) {
         console.error('Gagal ambil barangs', error);
       } finally {
         this.loadingBarangs = false;
       }
+    },
 
+    async fetchBantuan() {
+      this.loadingBantuan = true;
       try {
-        // Fetch Bantuan Requests
-        const resBantuan = await adminApi.getBantuanRequests();
-        this.bantuanRequests = resBantuan.data.data || resBantuan.data || [];
+        const params = this.filterStatus ? { status: this.filterStatus } : {};
+        const res = await adminApi.getBantuanRequests(params);
+        this.bantuanRequests = res.data.data || [];
       } catch (error) {
         console.error('Gagal ambil bantuan', error);
       } finally {
         this.loadingBantuan = false;
       }
     },
-    
-    async handleProcessBantuan(id) {
-      if (!confirm('Tandai request ini sudah diproses?')) return;
-      try {
-        await adminApi.processBantuan(id);
-        this.$toast.success('Request ditandai selesai');
-        // Refresh data bantuan
-        const resBantuan = await adminApi.getBantuanRequests();
-        this.bantuanRequests = resBantuan.data.data || resBantuan.data || [];
-      } catch (error) {
-        this.$toast.error('Gagal memproses request');
-      }
-    },
 
-    handleLogout() {
-      if (confirm('Yakin ingin keluar dari panel admin?')) {
-        // Hapus semua data sesi dari localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('user');
-        
-        // Arahkan ke halaman login
-        this.$router.push('/login');
+    async handleRespondBantuan(id, status) {
+      const label = status === 'disetujui' ? 'menyetujui' : 'menolak';
+      const alasan = prompt(`Alasan ${label} request ini (opsional):`);
+      if (alasan === null) return;
+
+      try {
+        await adminApi.respondBantuan(id, { status, alasan: alasan || null });
+        this.$toast.success(`Request berhasil ${status}`);
+        await this.fetchBantuan();
+      } catch (error) {
+        this.$toast.error(error.response?.data?.message || 'Gagal memproses request');
       }
     }
   }
@@ -243,7 +233,6 @@ export default {
 </script>
 
 <style scoped>
-/* Full Screen Admin Layout */
 .admin-wrapper {
   display: flex;
   min-height: 100vh;
@@ -252,157 +241,11 @@ export default {
   color: #2D3748;
 }
 
-/* 1. Sidebar Styling */
-.sidebar {
-  width: 260px;
-  background-color: #003049;
-  color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  padding: 24px 16px;
-  flex-shrink: 0;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px 24px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.brand-icon {
-  font-size: 24px;
-  color: #F77F00;
-}
-
-.sidebar-brand h2 {
-  font-size: 20px;
-  margin: 0;
-  color: #ffffff;
-  font-weight: 800;
-}
-
-.sidebar-brand span {
-  font-size: 12px;
-  color: #FCBF49;
-  font-weight: 600;
-  background: rgba(252, 191, 73, 0.15);
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.sidebar-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 20px;
-  flex: 1;
-}
-
-.menu-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #A0AEC0;
-  letter-spacing: 1px;
-  padding: 12px 12px 6px 12px;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  color: #EAE2B7;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.menu-item i {
-  font-size: 16px;
-}
-
-.menu-item:hover, .menu-item.active {
-  background-color: #F77F00;
-  color: #ffffff;
-}
-
-.badge-dot-menu {
-  margin-left: auto;
-  background: #D62828;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: 700;
-}
-
-.sidebar-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.admin-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background-color: #F77F00;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.profile-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-info .name {
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-}
-
-.profile-info .role {
-  font-size: 10px;
-  color: #A0AEC0;
-}
-
-.btn-logout {
-  background: none;
-  border: none;
-  color: #EAE2B7;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s;
-}
-
-.btn-logout:hover {
-  color: #D62828;
-}
-
-/* 2. Main Content Styling */
 .main-content {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+  min-width: 0;
 }
 
 .topbar {
@@ -454,7 +297,6 @@ export default {
   background-color: #ffffff;
 }
 
-/* Stats Cards */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -510,10 +352,8 @@ export default {
   font-weight: 700;
 }
 
-.stat-trend.positive { color: #2E7D32; }
 .stat-trend.neutral { color: #A0AEC0; }
 
-/* Dashboard Sections */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -526,6 +366,7 @@ export default {
   padding: 24px;
   border: 1px solid #E2E8F0;
   box-shadow: 0 2px 10px rgba(0, 48, 73, 0.03);
+  min-width: 0;
 }
 
 .section-header {
@@ -533,6 +374,7 @@ export default {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 .section-header h3 {
@@ -547,7 +389,20 @@ export default {
   color: #718096;
 }
 
-/* Custom Table */
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  font-size: 12px;
+  background: #ffffff;
+  color: #003049;
+  outline: none;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
 .custom-table {
   width: 100%;
   border-collapse: collapse;
@@ -560,12 +415,19 @@ export default {
   text-transform: uppercase;
   border-bottom: 2px solid #EDF2F7;
   text-align: left;
+  white-space: nowrap;
 }
 
 .custom-table td {
   padding: 12px;
   font-size: 13px;
   border-bottom: 1px solid #F7FAFC;
+  vertical-align: top;
+}
+
+.text-cell {
+  max-width: 200px;
+  word-break: break-word;
 }
 
 .empty-state {
@@ -582,9 +444,22 @@ export default {
   border-radius: 12px;
   font-size: 10px;
   font-weight: 700;
+  text-transform: capitalize;
 }
 
-.tag-status.menunggu { background: #FFF3E0; color: #F77F00; }
+.tag-status.pending { background: #FFF3E0; color: #F77F00; }
+.tag-status.disetujui { background: rgba(46, 125, 50, 0.12); color: #2E7D32; }
+.tag-status.ditolak { background: rgba(214, 40, 40, 0.12); color: #D62828; }
+
+.done-text {
+  font-size: 11px;
+  color: #A0AEC0;
+}
+
+.action-cell {
+  display: flex;
+  gap: 6px;
+}
 
 .btn-action {
   padding: 6px 12px;
@@ -595,10 +470,11 @@ export default {
   cursor: pointer;
 }
 
-.btn-edit { background-color: rgba(0, 48, 73, 0.1); color: #003049; }
-.btn-edit:hover { background-color: rgba(0, 48, 73, 0.2); }
+.btn-approve { background: rgba(46, 125, 50, 0.12); color: #2E7D32; }
+.btn-approve:hover { background: rgba(46, 125, 50, 0.22); }
+.btn-reject { background: rgba(214, 40, 40, 0.12); color: #D62828; }
+.btn-reject:hover { background: rgba(214, 40, 40, 0.22); }
 
-/* Side User List */
 .user-list {
   display: flex;
   flex-direction: column;
